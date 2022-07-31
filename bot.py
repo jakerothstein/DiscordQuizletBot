@@ -93,8 +93,17 @@ class join_game(miru.View):
 
     @miru.button(label="Start", style=hikari.ButtonStyle.DANGER)
     async def stop_button(self, button: miru.Button, ctx: miru.Context):
-        join_game.players = []
-        self.stop()  # Stop listening for interactions
+        if str(ctx.user.id) in join_game.players:
+            join_game.players = []
+            self.stop()  # Stop listening for interactions
+        else:
+            await ctx.respond("You must join the game in order to start the game!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
+
+    @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
+    async def cancel_button(self, button: miru.Button, ctx: miru.Context) -> None:
+        bot.d = "Timeout"
+        self.stop()
 
     async def on_timeout(self) -> None:
         bot.d = "Timeout"
@@ -107,7 +116,8 @@ class answers(miru.View):
             bot.d = ["A", ctx.user.id]
             self.stop()
         else:
-            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond("You are not part of this game. Join a game next round!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇧"), style=hikari.ButtonStyle.PRIMARY)
     async def b_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -115,7 +125,8 @@ class answers(miru.View):
             bot.d = ["B", ctx.user.id]
             self.stop()
         else:
-            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond("You are not part of this game. Join a game next round!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇨"), style=hikari.ButtonStyle.PRIMARY)
     async def c_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -123,7 +134,8 @@ class answers(miru.View):
             bot.d = ["C", ctx.user.id]
             self.stop()
         else:
-            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond("You are not part of this game. Join a game next round!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇩"), style=hikari.ButtonStyle.PRIMARY)
     async def d_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -131,7 +143,8 @@ class answers(miru.View):
             bot.d = ["D", ctx.user.id]
             self.stop()
         else:
-            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond("You are not part of this game. Join a game next round!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🛑"), style=hikari.ButtonStyle.DANGER)
     async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -139,7 +152,8 @@ class answers(miru.View):
             bot.d = ["Stop", ctx.user.id]
             self.stop()
         else:
-            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond("You are not part of this game. Join a game next round!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     async def on_timeout(self) -> None:
         bot.d = "Timeout"
