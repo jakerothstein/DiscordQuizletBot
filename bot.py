@@ -1,5 +1,6 @@
 import json
 import random
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import hikari
@@ -66,37 +67,68 @@ def correct_letter(data):
                 return "C"
             else:
                 return "D"
+
+
+def convert(a):
+    it = iter(a)
+    res_dct = dict(zip(it, it))
+    return res_dct
+
+
 class join_game(miru.View):
+    players = []
+
     @miru.button(label="Join", style=hikari.ButtonStyle.SUCCESS)
     async def start_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        await ctx.respond("<@" + str(ctx.user.id) + ">" + " joined")
+
+        join_game.players.append(str(ctx.user.id))
+        resp = "> Players: "
+        for i in range(len(join_game.players)):
+            if resp.find(str(ctx.user.id)) == -1:
+                resp += "<@" + join_game.players[i] + "> "
+        await ctx.edit_response(resp)
+        bot.d = join_game.players
+
         # player.append(ctx.user.id)
 
     @miru.button(label="Start", style=hikari.ButtonStyle.DANGER)
     async def stop_button(self, button: miru.Button, ctx: miru.Context):
+        join_game.players = []
         self.stop()  # Stop listening for interactions
+
+    async def on_timeout(self) -> None:
+        bot.d = "Timeout"
 
 
 class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🇦"), style=hikari.ButtonStyle.PRIMARY)
     async def a_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = "A"
+        bot.d = ["A", ctx.user.id]
         self.stop()
 
     @miru.button(emoji=hikari.Emoji.parse("🇧"), style=hikari.ButtonStyle.PRIMARY)
     async def b_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = "B"
+        bot.d = ["B", ctx.user.id]
         self.stop()
 
     @miru.button(emoji=hikari.Emoji.parse("🇨"), style=hikari.ButtonStyle.PRIMARY)
     async def c_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = "C"
+
+        bot.d = ["C", ctx.user.id]
         self.stop()
 
     @miru.button(emoji=hikari.Emoji.parse("🇩"), style=hikari.ButtonStyle.PRIMARY)
     async def d_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = "D"
+        bot.d = ["D", ctx.user.id]
         self.stop()
+
+    @miru.button(emoji=hikari.Emoji.parse("🛑"), style=hikari.ButtonStyle.DANGER)
+    async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
+        bot.d = ["Stop", ctx.user.id]
+        self.stop()
+
+    async def on_timeout(self) -> None:
+        bot.d = "Timeout"
 
 
 @bot.command
@@ -104,10 +136,8 @@ class answers(miru.View):
 @lightbulb.command('start-game', 'Starts quizlet game')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def pic(ctx: lightbulb.SlashContext):
-    msg = await (await ctx.respond("Starting Game...")).message()
-    players = []
+    await (await ctx.respond("Starting Game...")).message()
     view = join_game(timeout=60)
-
     url = ctx.options.url
     set_id = re.sub("[^0-9]", "", url)
     orig_quizlet_set = get_quizlet_attributes(set_id)
@@ -121,23 +151,61 @@ async def pic(ctx: lightbulb.SlashContext):
     message = await ctx.edit_last_response("", embed=embed, components=view.build())
     view.start(message)
     await view.wait()  # Wait until the view times out or gets stopped
+    if str(bot.d) == "Timeout":
+        await ctx.delete_last_response()
+        return
+    playerList = bot.d
+    del bot.d
+    for player in range(len(playerList)):
+        playerList.insert(playerList.index(playerList[player]) * 2 + 1, 0)
 
-    data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)
-    view = answers(timeout=10)
-
+    playerMap = convert(playerList)
+    del playerList
     cnt = 0
-    cnt += 1
-    embed = hikari.Embed(title="Round " + str(cnt),
-                         description="Match the terms (10 seconds to answer)\n\nTerm: **" + data[
-                             1] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
-                                         0] + "\n:regional_indicator_b:: " + data[0][1] + "\n:regional_indicator_c:: " +
-                                     data[0][2] + "\n:regional_indicator_d:: " + data[0][3], color=0x4257b2)
-    embed.set_footer(text="Set ID: " + set_id)
-    prompt = await ctx.edit_last_response(embed=embed, components=view.build())
-    view.start(message)
-    await view.wait()  # Wait until the view times out or gets stopped
-    letter = correct_letter(data)
-    await ctx.respond("The last answer was **" + data[2] + "** or answer **" + letter + "**\nYou answered " + str(bot.d))
+    stop = True
+    while stop:
+        view = answers(timeout=10)
+        data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)
+        cnt += 1
+        embed = hikari.Embed(title="Round " + str(cnt),
+                             description="Match the terms (10 seconds to answer)\n\nTerm: **" + data[
+                                 1] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
+                                             0] + "\n:regional_indicator_b:: " + data[0][
+                                             1] + "\n:regional_indicator_c:: " +
+                                         data[0][2] + "\n:regional_indicator_d:: " + data[0][3], color=0x4257b2)
+        embed.set_footer(text="Set ID: " + set_id)
+        prompt = await ctx.edit_last_response("", embed=embed, components=view.build())
+        view.start(prompt)
+        await view.wait()  # Wait until the view times out or gets stopped
+        if str(bot.d) == "Timeout":
+            continue
+        if str(bot.d[0]) == "Stop":
+            stop = False
+            continue
+        letter = correct_letter(data)
+        if str(bot.d[0]) == letter:
+            playerMap[str(bot.d[1])] += 10
+            resp = "correct :white_check_mark:\n> Good job " + "<@" + str(bot.d[1]) + ">\n> You have " + str(
+                playerMap[str(bot.d[1])]) + " points!"
+        else:
+            playerMap[str(bot.d[1])] -= 10
+            resp = "incorrect :x:\n> <@" + str(bot.d[1]) + "> answered: " + str(bot.d[0]) + "\n> You have " + str(
+                playerMap[str(bot.d[1])]) + " points."
+
+        await ctx.respond("The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
+            bot.d[1]) + "> is " + resp)
+        del remain_quizlet_set[data[2]]
+        time.sleep(6)
+        await ctx.delete_last_response()
+
+    myList = sorted(playerMap.items(), key=lambda x: x[1], reverse=True)
+    rank = ""
+    for i in range(len(myList)):
+        rank += str(i + 1) + ". <@" + str(myList[i][0]) + "> " + str(playerMap[str(myList[i][0])]) + " Points\n"
+
+    embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)
+    embed.set_footer(text="Thanks for playing!")
+    await ctx.respond("", embed=embed)
 
 
 miru.load(bot)
