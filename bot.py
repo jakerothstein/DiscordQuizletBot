@@ -7,6 +7,7 @@ import hikari
 import miru
 import lightbulb
 import re
+import urllib.parse
 
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
 options = Options()
@@ -103,6 +104,8 @@ class join_game(miru.View):
     @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
     async def cancel_button(self, button: miru.Button, ctx: miru.Context) -> None:
         bot.d = "Timeout"
+        global gameStarted
+        gameStarted = False
         self.stop()
 
     async def on_timeout(self) -> None:
@@ -150,6 +153,8 @@ class answers(miru.View):
     async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in playerMap:
             bot.d = ["Stop", ctx.user.id]
+            global gameStarted
+            gameStarted = False
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -161,16 +166,28 @@ class answers(miru.View):
 
 playerMap = {}
 
+gameStarted = False
+
 
 @bot.command
 @lightbulb.option('url', 'Quizlet set url', type=str)
 @lightbulb.command('start-game', 'Starts quizlet game')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def pic(ctx: lightbulb.SlashContext):
+    global gameStarted
+    if gameStarted:
+        await ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
+        time.sleep(1)
+        return
     await (await ctx.respond("Starting Game...")).message()
+    gameStarted = True
     view = join_game(timeout=60)
-    url = ctx.options.url
-    set_id = re.sub("[^0-9]", "", url)
+    url = str(ctx.options.url)
+
+    # set_id = re.sub("[^0-9]", "", url)
+    parsed = urllib.parse.urlsplit(url)
+    set_id = parsed.path.split("/")[1]
+
     orig_quizlet_set = get_quizlet_attributes(set_id)
     remain_quizlet_set = orig_quizlet_set
 
@@ -237,6 +254,7 @@ async def pic(ctx: lightbulb.SlashContext):
     embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)
     embed.set_footer(text="Thanks for playing!")
     await ctx.respond("", embed=embed)
+    gameStarted = False
 
 
 miru.load(bot)
