@@ -103,32 +103,49 @@ class join_game(miru.View):
 class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🇦"), style=hikari.ButtonStyle.PRIMARY)
     async def a_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = ["A", ctx.user.id]
-        self.stop()
+        if str(ctx.user.id) in playerMap:
+            bot.d = ["A", ctx.user.id]
+            self.stop()
+        else:
+            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇧"), style=hikari.ButtonStyle.PRIMARY)
     async def b_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = ["B", ctx.user.id]
-        self.stop()
+        if str(ctx.user.id) in playerMap:
+            bot.d = ["B", ctx.user.id]
+            self.stop()
+        else:
+            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇨"), style=hikari.ButtonStyle.PRIMARY)
     async def c_button(self, button: miru.Button, ctx: miru.Context) -> None:
-
-        bot.d = ["C", ctx.user.id]
-        self.stop()
+        if str(ctx.user.id) in playerMap:
+            bot.d = ["C", ctx.user.id]
+            self.stop()
+        else:
+            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🇩"), style=hikari.ButtonStyle.PRIMARY)
     async def d_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = ["D", ctx.user.id]
-        self.stop()
+        if str(ctx.user.id) in playerMap:
+            bot.d = ["D", ctx.user.id]
+            self.stop()
+        else:
+            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(emoji=hikari.Emoji.parse("🛑"), style=hikari.ButtonStyle.DANGER)
     async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = ["Stop", ctx.user.id]
-        self.stop()
+        if str(ctx.user.id) in playerMap:
+            bot.d = ["Stop", ctx.user.id]
+            self.stop()
+        else:
+            await ctx.respond("You are not part of this game. Join a game next round!", flags=hikari.MessageFlag.EPHEMERAL)
 
     async def on_timeout(self) -> None:
         bot.d = "Timeout"
+
+
+playerMap = {}
 
 
 @bot.command
@@ -158,7 +175,7 @@ async def pic(ctx: lightbulb.SlashContext):
     del bot.d
     for player in range(len(playerList)):
         playerList.insert(playerList.index(playerList[player]) * 2 + 1, 0)
-
+    global playerMap
     playerMap = convert(playerList)
     del playerList
     cnt = 0
