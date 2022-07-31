@@ -9,6 +9,6 @@ Get a discord bot token
 
 # Comands
 
->start-game
+>/start-game [url]
 >
 Starts the game
