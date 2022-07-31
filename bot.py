@@ -6,7 +6,6 @@ from selenium.webdriver.chrome.options import Options
 import hikari
 import miru
 import lightbulb
-import re
 import urllib.parse
 
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
@@ -245,7 +244,6 @@ async def pic(ctx: lightbulb.SlashContext):
         del remain_quizlet_set[data[2]]
         time.sleep(6)
         await ctx.delete_last_response()
-
     myList = sorted(playerMap.items(), key=lambda x: x[1], reverse=True)
     rank = ""
     for i in range(len(myList)):
@@ -253,7 +251,7 @@ async def pic(ctx: lightbulb.SlashContext):
 
     embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)
     embed.set_footer(text="Thanks for playing!")
-    await ctx.respond("", embed=embed)
+    await ctx.edit_last_response("", embed=embed, components="")
     gameStarted = False
 
 
