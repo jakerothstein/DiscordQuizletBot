@@ -15,7 +15,7 @@ driver = webdriver.Chrome(CHROMEDRIVER_PATH,
                           chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
 
 bot = lightbulb.BotApp(
-    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.GkabbM.7kzvkLXcsECYm8Frnux6-IDFCnQGtk25XeTa-A'  # DISCORD BOT TOKEN
+    token=''  # DISCORD BOT TOKEN
 )
 
 
