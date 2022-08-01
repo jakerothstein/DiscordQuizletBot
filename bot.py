@@ -15,7 +15,7 @@ driver = webdriver.Chrome(CHROMEDRIVER_PATH,
                           chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
 
 bot = lightbulb.BotApp(
-    token=''  # DISCORD BOT TOKEN
+    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.GkabbM.7kzvkLXcsECYm8Frnux6-IDFCnQGtk25XeTa-A'  # DISCORD BOT TOKEN
 )
 
 
@@ -341,21 +341,22 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
         for i in range(5, 0, -1):
             time.sleep(1)
             await ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
-        del remain_quizlet_set[data[2]] # Removes used question from remain_quizlet_set
+        del remain_quizlet_set[data[2]]  # Removes used question from remain_quizlet_set
         await ctx.delete_last_response()
-    myList = sorted(playerMap.items(), key=lambda x: x[1], reverse=True) # If game is over sort the players
+    myList = sorted(playerMap.items(), key=lambda x: x[1], reverse=True)  # If game is over sort the players
     rank = ""
     for i in range(len(myList)):
-        rank += str(i + 1) + ". <@" + str(myList[i][0]) + "> " + str(playerMap[str(myList[i][0])]) + " Points\n" # Adds the players to the scoreboard
+        rank += str(i + 1) + ". <@" + str(myList[i][0]) + "> " + str(
+            playerMap[str(myList[i][0])]) + " Points\n"  # Adds the players to the scoreboard
 
-    embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2) # Embed
+    embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)  # Embed
     embed.set_footer(text="Thanks for playing!")
     await ctx.edit_last_response("", embed=embed, components="")
-    gameStarted = False # Stops game
+    gameStarted = False  # Stops game
 
 
 @bot.command
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8))) # Checks for admin and resets vars
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8)))  # Checks for admin and resets vars
 @lightbulb.command('reset-bot', '[MUST HAVE ADMIN ACCESS] Resets quizlet bot if errors occur')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def reset(ctx):
