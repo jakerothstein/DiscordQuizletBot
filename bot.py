@@ -75,29 +75,70 @@ def convert(a):
     return res_dct
 
 
+def get_start_players_str(players_lst, user_id):
+    resp = "> Players: "
+    for i in range(len(players_lst)):
+        if resp.find(str(user_id)) == -1:
+            resp += "<@" + players_lst[i] + "> "
+    return resp
+
+
 class join_game(miru.View):
     players = []
 
     @miru.button(label="Join", style=hikari.ButtonStyle.SUCCESS)
     async def start_button(self, button: miru.Button, ctx: miru.Context) -> None:
+        global int_user_used
+        global init_user
 
-        join_game.players.append(str(ctx.user.id))
-        resp = "> Players: "
-        for i in range(len(join_game.players)):
-            if resp.find(str(ctx.user.id)) == -1:
-                resp += "<@" + join_game.players[i] + "> "
-        await ctx.edit_response(resp)
-        bot.d = join_game.players
+        if not int_user_used:
+            int_user_used = True
+            join_game.players.append(init_user)
+
+        if str(ctx.user.id) not in join_game.players:
+            join_game.players.append(str(ctx.user.id))
+            resp = get_start_players_str(join_game.players, ctx.user.id)
+            await ctx.edit_response(resp)
+            bot.d = join_game.players
+        else:
+            await ctx.respond("You have already joined the party!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
         # player.append(ctx.user.id)
 
-    @miru.button(label="Start", style=hikari.ButtonStyle.DANGER)
+    @miru.button(label="Start", style=hikari.ButtonStyle.PRIMARY)
     async def stop_button(self, button: miru.Button, ctx: miru.Context):
+        global int_user_used
+        global init_user
+
+        if not int_user_used:
+            int_user_used = True
+            join_game.players.append(init_user)
+
         if str(ctx.user.id) in join_game.players:
+            bot.d = join_game.players
             join_game.players = []
             self.stop()  # Stop listening for interactions
         else:
             await ctx.respond("You must join the game in order to start the game!",
+                              flags=hikari.MessageFlag.EPHEMERAL)
+
+    @miru.button(label="Leave", style=hikari.ButtonStyle.DANGER)
+    async def leave_button(self, button: miru.Button, ctx: miru.Context):
+        global int_user_used
+        global init_user
+
+        if not int_user_used:
+            int_user_used = True
+            join_game.players.append(init_user)
+
+        if str(ctx.user.id) in join_game.players:
+            join_game.players.remove(str(ctx.user.id))
+            resp = get_start_players_str(join_game.players, ctx.user.id)
+            await ctx.edit_response(resp)
+            bot.d = join_game.players
+        else:
+            await ctx.respond("You can't leave if you are not the party!",
                               flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
@@ -105,6 +146,8 @@ class join_game(miru.View):
         bot.d = "Timeout"
         global gameStarted
         gameStarted = False
+        global int_user_used
+        int_user_used = False
         self.stop()
 
     async def on_timeout(self) -> None:
@@ -154,6 +197,8 @@ class answers(miru.View):
             bot.d = ["Stop", ctx.user.id]
             global gameStarted
             gameStarted = False
+            global int_user_used
+            int_user_used = False
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -167,12 +212,20 @@ playerMap = {}
 
 gameStarted = False
 
+init_user = ""
+
+int_user_used = False
+
 
 @bot.command
 @lightbulb.option('url', 'Quizlet set url', type=str)
 @lightbulb.command('start-game', 'Starts quizlet game')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def pic(ctx: lightbulb.SlashContext):
+    global int_user_used
+    int_user_used = False
+    global init_user
+    init_user = str(ctx.author.id)
     global gameStarted
     if gameStarted:
         await ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
@@ -190,16 +243,18 @@ async def pic(ctx: lightbulb.SlashContext):
     orig_quizlet_set = get_quizlet_attributes(set_id)
     remain_quizlet_set = orig_quizlet_set
 
-    embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\n*Press Join to enter the game*",
-                         color=0x4257b2, url=url)
+    embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\n*Press Join to enter the party*",
+                         color=0x4257b2, url="https://github.com/jakerothstein/DiscordQuizletBot")
     embed.set_thumbnail("https://www.aisd.net/wp-content/files/quizlet.png")
-    embed.set_footer(text="Set ID: " + set_id)
+    embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
 
-    message = await ctx.edit_last_response("", embed=embed, components=view.build())
+    message_str = "> Players: <@" + str(ctx.author.id) + ">"
+    message = await ctx.edit_last_response(message_str, embed=embed, components=view.build())
     view.start(message)
     await view.wait()  # Wait until the view times out or gets stopped
     if str(bot.d) == "Timeout":
         await ctx.delete_last_response()
+        gameStarted = False
         return
     playerList = bot.d
     del bot.d
@@ -211,20 +266,23 @@ async def pic(ctx: lightbulb.SlashContext):
     cnt = 0
     stop = True
     while stop:
-        view = answers(timeout=10)
+        view = answers(timeout=20)
         data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)
         cnt += 1
         embed = hikari.Embed(title="Round " + str(cnt),
-                             description="Match the terms (10 seconds to answer)\n\nTerm: **" + data[
+                             description="Match the terms (20 seconds to answer)\n\nTerm: **" + data[
                                  1] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
                                              0] + "\n:regional_indicator_b:: " + data[0][
                                              1] + "\n:regional_indicator_c:: " +
                                          data[0][2] + "\n:regional_indicator_d:: " + data[0][3], color=0x4257b2)
-        embed.set_footer(text="Set ID: " + set_id)
+        embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
         prompt = await ctx.edit_last_response("", embed=embed, components=view.build())
         view.start(prompt)
         await view.wait()  # Wait until the view times out or gets stopped
         if str(bot.d) == "Timeout":
+            for i in range(3, 0, -1):
+                time.sleep(1)
+                await ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
             continue
         if str(bot.d[0]) == "Stop":
             stop = False
@@ -238,11 +296,13 @@ async def pic(ctx: lightbulb.SlashContext):
             playerMap[str(bot.d[1])] -= 10
             resp = "incorrect :x:\n> <@" + str(bot.d[1]) + "> answered: " + str(bot.d[0]) + "\n> You have " + str(
                 playerMap[str(bot.d[1])]) + " points."
-
-        await ctx.respond("The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
-            bot.d[1]) + "> is " + resp)
+        finalResp = "The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
+            bot.d[1]) + "> is " + resp
+        await ctx.respond(finalResp + "\n*Next question in 6 seconds!*")
+        for i in range(5, 0, -1):
+            time.sleep(1)
+            await ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
         del remain_quizlet_set[data[2]]
-        time.sleep(6)
         await ctx.delete_last_response()
     myList = sorted(playerMap.items(), key=lambda x: x[1], reverse=True)
     rank = ""
@@ -253,6 +313,18 @@ async def pic(ctx: lightbulb.SlashContext):
     embed.set_footer(text="Thanks for playing!")
     await ctx.edit_last_response("", embed=embed, components="")
     gameStarted = False
+
+
+@bot.command
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8)))
+@lightbulb.command('reset-bot', '[MUST HAVE ADMIN ACCESS] Resets quizlet bot if errors occur')
+@lightbulb.implements(lightbulb.SlashCommand)
+async def reset(ctx):
+    await ctx.respond("Restarting...")
+    global gameStarted
+    gameStarted = False
+    global int_user_used
+    int_user_used = False
 
 
 miru.load(bot)

@@ -12,3 +12,7 @@ Get a discord bot token
 >/start-game [url]
 >
 Starts the game
+
+>/reset-bot
+>
+Resets the bot if errors occur (Admin access is required to run command)
