@@ -27,15 +27,18 @@ def get_quizlet_data(set_id):
     data = driver.find_element_by_css_selector("pre").get_attribute('innerHTML')
 
     parsed = json.loads(data)
-
-    num_cards = parsed['responses'][0]['paging']['total']
-    parsed_data = parsed['responses'][0]['models']['studiableItem']  # [0]['cardSides']
-
-    return [parsed_data, num_cards]
+    try:
+        num_cards = parsed['responses'][0]['paging']['total']
+        parsed_data = parsed['responses'][0]['models']['studiableItem']  # [0]['cardSides']
+        return [parsed_data, num_cards]
+    except:
+        return "Error"
 
 
 def get_quizlet_attributes(set_id):
     output = get_quizlet_data(set_id)
+    if output == "Error":
+        return "Error"
     quizlet_set = {}
     for i in range(output[1]):
         quizlet_set[output[0][i]['cardSides'][0]['media'][0]['plainText']] = output[0][i]['cardSides'][1]['media'][0][
@@ -115,12 +118,12 @@ class join_game(miru.View):
             int_user_used = True
             join_game.players.append(init_user)
 
-        if str(ctx.user.id) in join_game.players:
+        if str(ctx.user.id) == str(init_user):
             bot.d = join_game.players
             join_game.players = []
             self.stop()  # Stop listening for interactions
         else:
-            await ctx.respond("You must join the game in order to start the game!",
+            await ctx.respond("You must be the leader of the party in order to start the game!",
                               flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(label="Leave", style=hikari.ButtonStyle.DANGER)
@@ -137,18 +140,28 @@ class join_game(miru.View):
             resp = get_start_players_str(join_game.players, ctx.user.id)
             await ctx.edit_response(resp)
             bot.d = join_game.players
+            if init_user not in join_game.players:
+                await ctx.edit_response("> *This game was ended because the leader left the party*", embeds="",
+                                        components="")
+                bot.d = "Timeout1"
+                self.stop()
+
         else:
             await ctx.respond("You can't leave if you are not the party!",
                               flags=hikari.MessageFlag.EPHEMERAL)
 
     @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
     async def cancel_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        bot.d = "Timeout"
-        global gameStarted
-        gameStarted = False
-        global int_user_used
-        int_user_used = False
-        self.stop()
+        if str(ctx.user.id) == str(init_user):
+            bot.d = "Timeout"
+            global gameStarted
+            gameStarted = False
+            global int_user_used
+            int_user_used = False
+            self.stop()
+        else:
+            await ctx.respond("You must be the leader of the party to cancel the game",
+                              flags=hikari.MessageFlag.EPHEMERAL)
 
     async def on_timeout(self) -> None:
         bot.d = "Timeout"
@@ -221,7 +234,7 @@ int_user_used = False
 @lightbulb.option('url', 'Quizlet set url', type=str)
 @lightbulb.command('start-game', 'Starts quizlet game')
 @lightbulb.implements(lightbulb.SlashCommand)
-async def pic(ctx: lightbulb.SlashContext):
+async def quizlet_game(ctx: lightbulb.SlashContext):
     global int_user_used
     int_user_used = False
     global init_user
@@ -241,6 +254,11 @@ async def pic(ctx: lightbulb.SlashContext):
     set_id = parsed.path.split("/")[1]
 
     orig_quizlet_set = get_quizlet_attributes(set_id)
+
+    if orig_quizlet_set == "Error":
+        gameStarted = False
+        await ctx.edit_last_response("> **Invalid set url**\nPlease check your url")
+        return
     remain_quizlet_set = orig_quizlet_set
 
     embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\n*Press Join to enter the party*",
@@ -254,6 +272,9 @@ async def pic(ctx: lightbulb.SlashContext):
     await view.wait()  # Wait until the view times out or gets stopped
     if str(bot.d) == "Timeout":
         await ctx.delete_last_response()
+        gameStarted = False
+        return
+    elif str(bot.d) == "Timeout1":
         gameStarted = False
         return
     playerList = bot.d
