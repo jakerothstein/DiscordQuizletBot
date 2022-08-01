@@ -297,7 +297,8 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
                                              1] + "\n:regional_indicator_c:: " +
                                          data[0][2] + "\n:regional_indicator_d:: " + data[0][3], color=0x4257b2)
         embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
-        prompt = await ctx.edit_last_response("", embed=embed, components=view.build())
+        await ctx.delete_last_response()
+        prompt = await (await ctx.respond("", embed=embed, components=view.build())).message()
         view.start(prompt)
         await view.wait()  # Wait until the view times out or gets stopped
         if str(bot.d) == "Timeout":
