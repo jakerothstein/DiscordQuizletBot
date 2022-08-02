@@ -49,16 +49,21 @@ def get_quizlet_attributes(set_id):  # Gets data from get_quizlet_data() and par
     return quizlet_set
 
 
-def get_quiz_data(orig_quizlet_set,
-                  remain_quizlet_set):  # Gets the orig_quizlet_set to use as possible answers and uses the remain_quizlet_set to randomly select a term and answer returns everything in a list
+def get_quiz_data(orig_quizlet_set, remain_quizlet_set):  # Gets the orig_quizlet_set to use as possible answers and uses the remain_quizlet_set to randomly select a term and answer returns everything in a list
     ans_options = []
-    answer = random.choice(list(remain_quizlet_set.keys()))
+    remain_key_lst = list(remain_quizlet_set.keys())
+    answer = random.choice(remain_key_lst)
     prompt = remain_quizlet_set[answer]
     ans_options.append(answer)
+
+    remain_options = list(orig_quizlet_set.keys())
+    remain_options.remove(answer)
+
     while len(ans_options) < 4:
-        option = random.choice(list(orig_quizlet_set.keys()))
-        if option not in ans_options:
-            ans_options.append(option)
+        option = random.choice(remain_options)
+        ans_options.append(option)
+        remain_options.remove(option)
+
     random.shuffle(ans_options)  # Scrambles the order of the ans_options
     return [ans_options, prompt, answer]
 
@@ -264,16 +269,22 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
     # set_id = re.sub("[^0-9]", "", url)
     parsed = urllib.parse.urlsplit(url)  # Parses the url to get the set_id num
     set_id = parsed.path.split("/")[1]
+    if set_id == "ca":
+        set_id = parsed.path.split("/")[2]
 
     orig_quizlet_set = get_quizlet_attributes(
         set_id)  # Uses the set ID to call functions to return a dict of all the terms and answers
 
     if orig_quizlet_set == "Error":  # Error handling
         gameStarted = False
-        await ctx.edit_last_response("> **Invalid set url**\nPlease check your url")
+        await ctx.edit_last_response("> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
         return
-    remain_quizlet_set = orig_quizlet_set  # Creates remain_quizlet_set to remove possible answers so the same question will not be asked twice
-
+    remain_quizlet_set = {}
+    remain_quizlet_set.update(orig_quizlet_set)
+    if len(orig_quizlet_set) < 4:
+        await ctx.edit_last_response("> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
+        gameStarted = False
+        return
     embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\n*Press Join to enter the party*",
                          # Embedding
                          color=0x4257b2, url="https://github.com/jakerothstein/DiscordQuizletBot")
@@ -306,7 +317,7 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
         view = answers(timeout=20)  # Answers only last for 20 sec
         data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)  # Gets formatted quiz data
         round_cnt += 1
-        embed = hikari.Embed(title="Round " + str(round_cnt),
+        embed = hikari.Embed(title="Round " + str(round_cnt) + "/" + str(len(orig_quizlet_set)),
                              description="Match the terms (20 seconds to answer)\n\nTerm: **" + data[  # Embedded
                                  1] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
                                              0] + "\n:regional_indicator_b:: " + data[0][
@@ -337,6 +348,9 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
                 playerMap[str(bot.d[1])]) + " points."
         finalResp = "The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
             bot.d[1]) + "> is " + resp
+        if len(remain_quizlet_set) < 2:
+            stop = False
+            continue
         await ctx.respond(finalResp + "\n*Next question in 6 seconds!*")  # Countdown till next question
         for i in range(5, 0, -1):
             time.sleep(1)
