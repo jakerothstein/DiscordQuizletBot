@@ -252,15 +252,15 @@ int_user_used = False
 @lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
 @lightbulb.implements(lightbulb.SlashCommand)
 async def quizlet_game(ctx: lightbulb.SlashContext):
-    global int_user_used  # Inits the global vars
-    int_user_used = False
-    global init_user
-    init_user = str(ctx.author.id)
     global gameStarted
     if gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
         await ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
         time.sleep(1)
         return
+    global int_user_used  # Inits the global vars
+    int_user_used = False
+    global init_user
+    init_user = str(ctx.author.id)
     await (await ctx.respond("Starting Game...")).message()
     gameStarted = True  # Locks game so other instances can not be run
     view = join_game(timeout=60)  # after 60 seconds the menu will disappear
