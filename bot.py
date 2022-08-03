@@ -1,6 +1,7 @@
 import json
 import random
 import time
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import hikari
@@ -10,12 +11,12 @@ import urllib.parse
 
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
 options = Options()
-options.headless = True
+# options.headless = True
 driver = webdriver.Chrome(CHROMEDRIVER_PATH,
                           chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
-
+driver.minimize_window()
 bot = lightbulb.BotApp(
-    token=''  # DISCORD BOT TOKEN
+    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.Gl8pGV.Q1rZa5GTO7oMiKFxKO1Ao_VL9iYG4nrdAiYDXw'  # DISCORD BOT TOKEN
 )
 
 
@@ -49,7 +50,8 @@ def get_quizlet_attributes(set_id):  # Gets data from get_quizlet_data() and par
     return quizlet_set
 
 
-def get_quiz_data(orig_quizlet_set, remain_quizlet_set):  # Gets the orig_quizlet_set to use as possible answers and uses the remain_quizlet_set to randomly select a term and answer returns everything in a list
+def get_quiz_data(orig_quizlet_set,
+                  remain_quizlet_set):  # Gets the orig_quizlet_set to use as possible answers and uses the remain_quizlet_set to randomly select a term and answer returns everything in a list
     ans_options = []
     remain_key_lst = list(remain_quizlet_set.keys())
     answer = random.choice(remain_key_lst)
@@ -93,6 +95,16 @@ def get_start_players_str(players_lst, user_id):  # Creates the string that will
         if resp.find(str(user_id)) == -1:
             resp += "<@" + players_lst[i] + "> "
     return resp
+
+
+def get_quizlet_set_name(set_id):
+    url = "https://quizlet.com/" + str(set_id)
+    driver.get(url)
+    data = BeautifulSoup(driver.page_source, "html.parser")
+
+    name = data.find('title').encode_contents()
+
+    return str(name[0:len(name) - 21].decode("utf-8"))
 
 
 class join_game(miru.View):  # Class for joining game
@@ -246,6 +258,8 @@ init_user = ""
 
 int_user_used = False
 
+rand_url = ""
+
 
 @bot.command
 @lightbulb.option('url', 'Quizlet set url', type=str)  # Requires a string input with the slash command
@@ -253,9 +267,11 @@ int_user_used = False
 @lightbulb.implements(lightbulb.SlashCommand)
 async def quizlet_game(ctx: lightbulb.SlashContext):
     global gameStarted
+    global rand_url
     if gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
         await ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
         time.sleep(1)
+        rand_url = ""
         return
     global int_user_used  # Inits the global vars
     int_user_used = False
@@ -264,12 +280,21 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
     await (await ctx.respond("Starting Game...")).message()
     gameStarted = True  # Locks game so other instances can not be run
     view = join_game(timeout=60)  # after 60 seconds the menu will disappear
-    url = str(ctx.options.url)  # Gets url from the slash command
-
+    if rand_url == "":
+        url = str(ctx.options.url)  # Gets url from the slash command
+    else:
+        url = rand_url
     # set_id = re.sub("[^0-9]", "", url)
-    parsed = urllib.parse.urlsplit(url)  # Parses the url to get the set_id num
-    set_id = parsed.path.split("/")[1]
-    if set_id == "ca":
+    try:
+        parsed = urllib.parse.urlsplit(url)  # Parses the url to get the set_id num
+        set_id = parsed.path.split("/")[1]
+    except:
+        gameStarted = False
+        await ctx.edit_last_response(
+            "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
+        rand_url = ""
+        return
+    if not set_id.isdigit():
         set_id = parsed.path.split("/")[2]
 
     orig_quizlet_set = get_quizlet_attributes(
@@ -277,15 +302,21 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
 
     if orig_quizlet_set == "Error":  # Error handling
         gameStarted = False
-        await ctx.edit_last_response("> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
+        await ctx.edit_last_response(
+            "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
+        rand_url = ""
         return
     remain_quizlet_set = {}
     remain_quizlet_set.update(orig_quizlet_set)
     if len(orig_quizlet_set) < 4:
-        await ctx.edit_last_response("> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
+        await ctx.edit_last_response(
+            "> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
         gameStarted = False
+        rand_url = ""
         return
-    embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\n*Press Join to enter the party*",
+    set_name = get_quizlet_set_name(set_id)
+    embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\nSet Name: " + str(
+        set_name) + "\n*Press Join to enter the party*",
                          # Embedding
                          color=0x4257b2, url="https://github.com/jakerothstein/DiscordQuizletBot")
     embed.set_thumbnail("https://www.aisd.net/wp-content/files/quizlet.png")  # Random quizlet image from online
@@ -299,9 +330,11 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
     if str(bot.d) == "Timeout":  # Timeout handling from buttons
         await ctx.delete_last_response()
         gameStarted = False  # Resets the game vars
+        rand_url = ""
         return
     elif str(bot.d) == "Timeout1":  # Timeout1 handling from buttons
         gameStarted = False
+        rand_url = ""
         return
     playerList = bot.d  # If not errors gets player data from bot.d
     del bot.d  # Deletes bot data to reset list
@@ -367,6 +400,23 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
     embed.set_footer(text="Thanks for playing!")
     await ctx.edit_last_response("", embed=embed, components="")
     gameStarted = False  # Stops game
+    rand_url = ""
+    return 1
+
+
+@bot.command
+@lightbulb.option('key', 'The key used to search for a set', type=str)  # Requires a string input with the slash command
+@lightbulb.command('search-game', 'Starts a random game with a user provided key')
+@lightbulb.implements(lightbulb.SlashCommand)
+async def rand_quizlet_game(ctx: lightbulb.SlashContext):
+    url = "https://quizlet.com/search?query=" + str(ctx.options.key).replace(" ", "+") + "&type=sets"
+    driver.get(url)
+    data = BeautifulSoup(driver.page_source, "html.parser")
+    div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
+    target_url = div_data.find('a')['href']
+    global rand_url
+    rand_url = str(target_url)
+    await quizlet_game(ctx)
 
 
 @bot.command
@@ -379,6 +429,8 @@ async def reset(ctx):
     gameStarted = False
     global int_user_used
     int_user_used = False
+    global rand_url
+    rand_url = ""
 
 
 miru.load(bot)

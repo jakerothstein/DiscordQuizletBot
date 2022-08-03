@@ -6,7 +6,7 @@
 1. install all packages 📦 ``` pip install -r requirements.txt```
 
 
-2. Get a discord bot token
+2. Get a discord bot token [Link](https://discord.com/developers/applications)
 
 
 3. Install selenium chrome webdriver and change dir in file to where you installed: [Dowload Link](https://sites.google.com/chromium.org/driver/)
@@ -17,9 +17,9 @@
 >
 Starts the game
 
->/start-random-game
+>/search-game [key]
 >
-Starts a random game
+Starts a random game with a user provided key
 
 >/reset-bot
 >
