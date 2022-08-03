@@ -16,7 +16,7 @@ driver = webdriver.Chrome(CHROMEDRIVER_PATH,
                           chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
 driver.minimize_window()
 bot = lightbulb.BotApp(
-    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.Gl8pGV.Q1rZa5GTO7oMiKFxKO1Ao_VL9iYG4nrdAiYDXw'  # DISCORD BOT TOKEN
+    token=''  # DISCORD BOT TOKEN
 )
 
 
