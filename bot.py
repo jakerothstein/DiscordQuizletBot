@@ -11,6 +11,7 @@ import miru
 import lightbulb
 import urllib.parse
 
+from selenium.webdriver.common.by import By
 
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
 options = Options()
@@ -29,7 +30,7 @@ def get_quizlet_data(
         set_id) + "&filters%5BstudiableContainerType%5D=1&perPage=1000&page=1"  # Link to access quizlet data in json form
     driver.get(url)
 
-    data = driver.find_element_by_css_selector("pre").get_attribute('innerHTML')
+    data = driver.find_element(By.CSS_SELECTOR, 'pre').get_attribute('innerHTML')
 
     parsed = json.loads(data)
 
