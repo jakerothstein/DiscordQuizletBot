@@ -1,5 +1,7 @@
 import json
+import os
 import random
+import sys
 import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -9,6 +11,7 @@ import miru
 import lightbulb
 import urllib.parse
 
+
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
 options = Options()
 # options.headless = True
@@ -16,7 +19,7 @@ driver = webdriver.Chrome(CHROMEDRIVER_PATH,
                           chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
 driver.minimize_window()
 bot = lightbulb.BotApp(
-    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.Gl8pGV.Q1rZa5GTO7oMiKFxKO1Ao_VL9iYG4nrdAiYDXw'  # DISCORD BOT TOKEN
+    token=''  # DISCORD BOT TOKEN
 )
 
 
@@ -425,13 +428,12 @@ async def rand_quizlet_game(ctx: lightbulb.SlashContext):
 @lightbulb.implements(lightbulb.SlashCommand)
 async def reset(ctx):
     await ctx.respond("Restarting...")
-    global gameStarted
-    gameStarted = False
-    global int_user_used
-    int_user_used = False
-    global rand_url
-    rand_url = ""
-
+    try:
+        driver.quit()
+    except:
+        print("Webdriver does not exist")
+    await ctx.edit_last_response("Reset Complete ✅")
+    os.execv(sys.executable, ['python'] + sys.argv)
 
 miru.load(bot)
 bot.run()
