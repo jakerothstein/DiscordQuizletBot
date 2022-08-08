@@ -7,19 +7,22 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
 import hikari
 import miru
 import lightbulb
 import urllib.parse
 
-CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe" # Change to where your selenium driver is located
 options = Options()
 # options.headless = True
-driver = webdriver.Chrome(CHROMEDRIVER_PATH,
-                          chrome_options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
+options.add_argument('log-level=3')
+driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),  # https://pypi.org/project/webdriver-manager/
+                          options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
 driver.minimize_window()
 bot = lightbulb.BotApp(
-    token=''  # DISCORD BOT TOKEN
+    token='MTAwMzA1NjQ1NzUxNzkwNDAzMw.GZg9q4.8VZKV_V5EclKBGqAGBPekAGarJFOao7lLO8MPw',  # DISCORD BOT TOKEN
+    banner=None  # No intro console banner
 )
 
 
@@ -53,7 +56,8 @@ def get_quizlet_attributes(set_id):  # Gets data from get_quizlet_data() and par
         except:
             img = ""
         quizlet_set[output[0][i]['cardSides'][0]['media'][0]['plainText']] = [output[0][i]['cardSides'][1]['media'][0][
-                                                                                  'plainText'], img]  # json route to parse data
+                                                                                  'plainText'],
+                                                                              img]  # json route to parse data
     return quizlet_set
 
 
@@ -419,7 +423,8 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
 
 
 @bot.command
-@lightbulb.option('search', 'Search for your desired set (Calculus BC, Biology, etc.)', type=str)  # Requires a string input with the slash command
+@lightbulb.option('search', 'Search for your desired set (Calculus BC, Biology, etc.)',
+                  type=str)  # Requires a string input with the slash command
 @lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def rand_quizlet_game(ctx: lightbulb.SlashContext):
@@ -450,5 +455,11 @@ async def reset(ctx):
     await ctx.edit_last_response("Reset Complete ✅")
     os.execv(sys.executable, ['python'] + sys.argv)
 
-miru.load(bot)
-bot.run()
+
+def main():
+    miru.load(bot)
+    bot.run()
+
+
+if __name__ == "__main__":
+    main()
