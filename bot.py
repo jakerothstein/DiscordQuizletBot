@@ -10,10 +10,9 @@ import hikari
 import miru
 import lightbulb
 import urllib.parse
-
 from selenium.webdriver.common.by import By
 
-CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe"
+CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe" # Change to where your selenium driver is located
 options = Options()
 # options.headless = True
 driver = webdriver.Chrome(CHROMEDRIVER_PATH,
@@ -49,8 +48,12 @@ def get_quizlet_attributes(set_id):  # Gets data from get_quizlet_data() and par
         return "Error"
     quizlet_set = {}
     for i in range(output[1]):
-        quizlet_set[output[0][i]['cardSides'][0]['media'][0]['plainText']] = output[0][i]['cardSides'][1]['media'][0][
-            'plainText']  # json route to parse data
+        try:  # Checks for an image
+            img = output[0][i]['cardSides'][1]['media'][1]['url']
+        except:
+            img = ""
+        quizlet_set[output[0][i]['cardSides'][0]['media'][0]['plainText']] = [output[0][i]['cardSides'][1]['media'][0][
+                                                                                  'plainText'], img]  # json route to parse data
     return quizlet_set
 
 
@@ -354,12 +357,15 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
         view = answers(timeout=20)  # Answers only last for 20 sec
         data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)  # Gets formatted quiz data
         round_cnt += 1
+        description = "Match the terms (20 seconds to answer)\n\nTerm: **" + data[
+            1][0] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
+                          0] + "\n:regional_indicator_b:: " + data[0][
+                          1] + "\n:regional_indicator_c:: " + data[0][2] + "\n:regional_indicator_d:: " + data[0][3]
+
         embed = hikari.Embed(title="Round " + str(round_cnt) + "/" + str(len(orig_quizlet_set)),
-                             description="Match the terms (20 seconds to answer)\n\nTerm: **" + data[  # Embedded
-                                 1] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
-                                             0] + "\n:regional_indicator_b:: " + data[0][
-                                             1] + "\n:regional_indicator_c:: " +
-                                         data[0][2] + "\n:regional_indicator_d:: " + data[0][3], color=0x4257b2)
+                             description=description, color=0x4257b2)
+        if data[1][1] != '':
+            embed.set_thumbnail(data[1][1])
         embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
         await ctx.delete_last_response()  # Deletes last message
         prompt = await (await ctx.respond("", embed=embed,
@@ -367,6 +373,10 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
         view.start(prompt)  # Starts listening
         await view.wait()  # Wait until the view times out or gets stopped
         if str(bot.d) == "Timeout":  # Timeout handling if no one responds in 20 sec
+            if len(remain_quizlet_set) < 2:
+                stop = False
+                continue
+            del remain_quizlet_set[data[2]]
             for i in range(3, 0, -1):
                 time.sleep(1)
                 await ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
