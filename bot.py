@@ -6,11 +6,11 @@ import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 import hikari
 import miru
 import lightbulb
 import urllib.parse
-from selenium.webdriver.common.by import By
 
 CHROMEDRIVER_PATH = "C:\Program Files (x86)\chromedriver.exe" # Change to where your selenium driver is located
 options = Options()
@@ -419,15 +419,19 @@ async def quizlet_game(ctx: lightbulb.SlashContext):
 
 
 @bot.command
-@lightbulb.option('key', 'The key used to search for a set', type=str)  # Requires a string input with the slash command
-@lightbulb.command('search-game', 'Starts a random game with a user provided key')
+@lightbulb.option('search', 'Search for your desired set (Calculus BC, Biology, etc.)', type=str)  # Requires a string input with the slash command
+@lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def rand_quizlet_game(ctx: lightbulb.SlashContext):
-    url = "https://quizlet.com/search?query=" + str(ctx.options.key).replace(" ", "+") + "&type=sets"
+    url = "https://quizlet.com/search?query=" + str(ctx.options.search).replace(" ", "+") + "&type=sets"
     driver.get(url)
     data = BeautifulSoup(driver.page_source, "html.parser")
-    div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
-    target_url = div_data.find('a')['href']
+    try:
+        div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
+        target_url = div_data.find('a')['href']
+    except:
+        await ctx.respond("> Set not found\nPlease search again for another set", flags=hikari.MessageFlag.EPHEMERAL)
+        return
     global rand_url
     rand_url = str(target_url)
     await quizlet_game(ctx)
