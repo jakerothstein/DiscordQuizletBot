@@ -2,6 +2,7 @@ import json
 import os
 import random
 import sys
+import threading
 import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -250,7 +251,7 @@ class answers(miru.View):
         bot.d = "Timeout"
 
 
-class quizletGame:
+class quizletGame(threading.Thread):
     playerMap = {}  # The following vars are all global vars controlled by quizlet_game() to communicate the miru commands
 
     gameStarted = False
@@ -261,23 +262,45 @@ class quizletGame:
 
     rand_url = ""
 
-    @bot.command
-    @lightbulb.option('url', 'Quizlet set url', type=str)  # Requires a string input with the slash command
-    @lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
-    @lightbulb.implements(lightbulb.SlashCommand)
-    async def quizlet_game(ctx: lightbulb.SlashContext):
+    def __init__(self, ctx, output_type):
+        threading.Thread.__init__(self)
+        self.ctx = ctx
+        self.type = output_type
+
+    async def run(self):
+        print(self.type)
+        if self.type == 'u':
+            return await quizletGame.quizlet_game(self)
+        else:
+            return await quizletGame.rand_quizlet_game(self)
+
+    async def rand_quizlet_game(self):
+        url = "https://quizlet.com/search?query=" + str(self.ctx.options.search).replace(" ", "+") + "&type=sets"
+        driver.get(url)
+        data = BeautifulSoup(driver.page_source, "html.parser")
+        try:
+            div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
+            target_url = div_data.find('a')['href']
+        except:
+            await self.ctx.respond("> Set not found\nPlease search again for another set",
+                                   flags=hikari.MessageFlag.EPHEMERAL)
+            return
+        quizletGame.rand_url = str(target_url)
+        return await quizletGame.quizlet_game(self.ctx)
+
+    async def quizlet_game(self):
         if quizletGame.gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
-            await ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
+            await self.ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
             time.sleep(1)
             quizletGame.rand_url = ""
             return
         quizletGame.int_user_used = False
-        quizletGame.init_user = str(ctx.author.id)
-        await (await ctx.respond("Starting Game...")).message()
+        quizletGame.init_user = str(self.ctx.author.id)
+        await (await self.ctx.respond("Starting Game...")).message()
         quizletGame.gameStarted = True  # Locks game so other instances can not be run
         view = join_game(timeout=60)  # after 60 seconds the menu will disappear
         if quizletGame.rand_url == "":
-            url = str(ctx.options.url)  # Gets url from the slash command
+            url = str(self.ctx.options.url)  # Gets url from the slash command
         else:
             url = quizletGame.rand_url
         # set_id = re.sub("[^0-9]", "", url)
@@ -286,7 +309,7 @@ class quizletGame:
             set_id = parsed.path.split("/")[1]
         except:
             quizletGame.gameStarted = False
-            await ctx.edit_last_response(
+            await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
             quizletGame.rand_url = ""
             return
@@ -298,14 +321,14 @@ class quizletGame:
 
         if orig_quizlet_set == "Error":  # Error handling
             quizletGame.gameStarted = False
-            await ctx.edit_last_response(
+            await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
             rand_url = ""
             return
         remain_quizlet_set = {}
         remain_quizlet_set.update(orig_quizlet_set)
         if len(orig_quizlet_set) < 4:
-            await ctx.edit_last_response(
+            await self.ctx.edit_last_response(
                 "> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
             quizletGame.gameStarted = False
             quizletGame.rand_url = ""
@@ -318,13 +341,13 @@ class quizletGame:
         embed.set_thumbnail("https://www.aisd.net/wp-content/files/quizlet.png")  # Random quizlet image from online
         embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
 
-        message_str = "> Players: <@" + str(ctx.author.id) + ">"
-        message = await ctx.edit_last_response(message_str, embed=embed,
-                                               components=view.build())  # Builds and sends message
+        message_str = "> Players: <@" + str(self.ctx.author.id) + ">"
+        message = await self.ctx.edit_last_response(message_str, embed=embed,
+                                                    components=view.build())  # Builds and sends message
         view.start(message)  # Listens for a response from the buttons
         await view.wait()  # Wait until the view times out or a self.stop() is triggered in the buttons
         if str(bot.d) == "Timeout":  # Timeout handling from buttons
-            await ctx.delete_last_response()
+            await self.ctx.delete_last_response()
             quizletGame.gameStarted = False  # Resets the game vars
             quizletGame.rand_url = ""
             return
@@ -355,9 +378,9 @@ class quizletGame:
             if data[1][1] != '':
                 embed.set_thumbnail(data[1][1])
             embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
-            await ctx.delete_last_response()  # Deletes last message
-            prompt = await (await ctx.respond("", embed=embed,
-                                              components=view.build())).message()  # Sends new message to go to bottom of the channel
+            await self.ctx.delete_last_response()  # Deletes last message
+            prompt = await (await self.ctx.respond("", embed=embed,
+                                                   components=view.build())).message()  # Sends new message to go to bottom of the channel
             view.start(prompt)  # Starts listening
             await view.wait()  # Wait until the view times out or gets stopped
             if str(bot.d) == "Timeout":  # Timeout handling if no one responds in 20 sec
@@ -367,7 +390,7 @@ class quizletGame:
                 del remain_quizlet_set[data[2]]
                 for i in range(3, 0, -1):
                     time.sleep(1)
-                    await ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
+                    await self.ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
                 continue  # Goes to next question
             if str(bot.d[0]) == "Stop":  # Checks if game is over and if so ends the loop
                 stop = False
@@ -386,12 +409,12 @@ class quizletGame:
             if len(remain_quizlet_set) < 2:
                 stop = False
                 continue
-            await ctx.respond(finalResp + "\n*Next question in 6 seconds!*")  # Countdown till next question
+            await self.ctx.respond(finalResp + "\n*Next question in 6 seconds!*")  # Countdown till next question
             for i in range(5, 0, -1):
                 time.sleep(1)
-                await ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
+                await self.ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
             del remain_quizlet_set[data[2]]  # Removes used question from remain_quizlet_set
-            await ctx.delete_last_response()
+            await self.ctx.delete_last_response()
         myList = sorted(quizletGame.playerMap.items(), key=lambda x: x[1],
                         reverse=True)  # If game is over sort the players
         rank = ""
@@ -401,29 +424,36 @@ class quizletGame:
 
         embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)  # Embed
         embed.set_footer(text="Thanks for playing!")
-        await ctx.edit_last_response("", embed=embed, components="")
+        await self.ctx.edit_last_response("", embed=embed, components="")
         quizletGame.gameStarted = False  # Stops game
         quizletGame.rand_url = ""
         return 1
 
-    @bot.command
-    @lightbulb.option('search', 'Search for your desired set (Calculus BC, Biology, etc.)',
-                      type=str)  # Requires a string input with the slash command
-    @lightbulb.command('search-game', 'Starts a random game with a user provided query')
-    @lightbulb.implements(lightbulb.SlashCommand)
-    async def rand_quizlet_game(ctx: lightbulb.SlashContext):
-        url = "https://quizlet.com/search?query=" + str(ctx.options.search).replace(" ", "+") + "&type=sets"
-        driver.get(url)
-        data = BeautifulSoup(driver.page_source, "html.parser")
-        try:
-            div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
-            target_url = div_data.find('a')['href']
-        except:
-            await ctx.respond("> Set not found\nPlease search again for another set",
-                              flags=hikari.MessageFlag.EPHEMERAL)
-            return
-        quizletGame.rand_url = str(target_url)
-        await quizletGame.quizlet_game(ctx)
+
+@bot.command
+@lightbulb.option('url', 'Quizlet set url', type=str)  # Requires a string input with the slash command
+@lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
+@lightbulb.implements(lightbulb.SlashCommand)
+def start_quizlet_game(ctx: lightbulb.SlashContext):
+    thread1 = quizletGame(ctx, 'u')
+    thread1.start()
+    thread1.join()
+
+
+@bot.command
+@lightbulb.option('search', 'Search for your desired set (Calculus BC, Biology, etc.)',
+                  type=str)  # Requires a string input with the slash command
+@lightbulb.command('search-game', 'Starts a random game with a user provided query')
+@lightbulb.implements(lightbulb.SlashCommand)
+def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
+    thread2 = quizletGame(ctx, 's')
+    thread2.start()
+    thread2.join()
+
+    # random_game_thread = threading.Thread("rand_quizlet_game", ctx)
+    # random_game_thread.start()
+    # threading.
+    # await quizletGame.rand_quizlet_game(ctx)
 
 
 @bot.command
