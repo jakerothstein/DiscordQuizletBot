@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import random
@@ -263,16 +264,13 @@ class quizletGame(threading.Thread):
     rand_url = ""
 
     def __init__(self, ctx, output_type):
-        threading.Thread.__init__(self)
+        super().__init__()
         self.ctx = ctx
         self.type = output_type
-
-    async def run(self):
-        print(self.type)
-        if self.type == 'u':
-            return await quizletGame.quizlet_game(self)
+        if str(output_type) == 'u':
+            asyncio.run(self.quizlet_game())
         else:
-            return await quizletGame.rand_quizlet_game(self)
+            asyncio.run(self.rand_quizlet_game())
 
     async def rand_quizlet_game(self):
         url = "https://quizlet.com/search?query=" + str(self.ctx.options.search).replace(" ", "+") + "&type=sets"
@@ -446,9 +444,9 @@ def start_quizlet_game(ctx: lightbulb.SlashContext):
 @lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
 def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
-    thread2 = quizletGame(ctx, 's')
-    thread2.start()
-    thread2.join()
+    t = quizletGame(ctx, 's')
+    t.start()
+    t.join()
 
     # random_game_thread = threading.Thread("rand_quizlet_game", ctx)
     # random_game_thread.start()
