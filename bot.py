@@ -370,7 +370,7 @@ class quizletGame:
             embed = hikari.Embed(title="Round " + str(round_cnt) + "/" + str(len(orig_quizlet_set)),
                                  description=description, color=0x4257b2)
             if data[1][1] != '':
-                embed.set_thumbnail(data[1][1])
+                embed.set_image(data[1][1])
             embed.set_footer(text="Set ID: " + set_id + " - https://quizlet.com/" + set_id)
             await self.ctx.delete_last_response()  # Deletes last message
             prompt = await (await self.ctx.respond("", embed=embed,
@@ -432,7 +432,7 @@ channel_list = []
 @lightbulb.option('url', 'Quizlet set url', type=str)  # Requires a string input with the slash command
 @lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
 @lightbulb.implements(lightbulb.SlashCommand)
-async def start_quizlet_game(ctx: lightbulb.SlashContext):
+async def url_quizlet_game(ctx: lightbulb.SlashContext):
     channel_id = ctx.channel_id
     global channel_list
     if channel_id not in channel_list:
@@ -440,8 +440,9 @@ async def start_quizlet_game(ctx: lightbulb.SlashContext):
         game = quizletGame(ctx, 'url')
         await game.start()
     else:
-        await ctx.respond("> There is already a game running in this channel.\nTry starting a new game in another channel!",
-                          flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(
+            "> There is already a game running in this channel.\nTry starting a new game in another channel!",
+            flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @bot.command
@@ -449,7 +450,7 @@ async def start_quizlet_game(ctx: lightbulb.SlashContext):
                   type=str)  # Requires a string input with the slash command
 @lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
-async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
+async def search_quizlet_game(ctx: lightbulb.SlashContext):
     channel_id = ctx.channel_id
     global channel_list
     if channel_id not in channel_list:
@@ -457,13 +458,16 @@ async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
         game = quizletGame(ctx, 'search')
         await game.start()
     else:
-        await ctx.respond("> There is already a game running in this channel.\nTry starting a new game in another channel!",
-                          flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(
+            "> There is already a game running in this channel.\nTry starting a new game in another channel!",
+            flags=hikari.MessageFlag.EPHEMERAL)
 
-    # random_game_thread = threading.Thread("rand_quizlet_game", ctx)
-    # random_game_thread.start()
-    # threading.
-    # await quizletGame.rand_quizlet_game(ctx)
+
+@bot.command
+@lightbulb.command('info', 'How to use bot')
+@lightbulb.implements(lightbulb.SlashCommand)
+async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
+    await ctx.respond("This is how you use the bot")  # TODO: Update this with an embed
 
 
 # @bot.command
@@ -478,7 +482,7 @@ async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
 #         print("Webdriver does not exist")
 #     await ctx.edit_last_response("Reset Complete ✅")
 #     os.execv(sys.executable, ['python'] + sys.argv)
-#TODO: Create an /info command
+
 
 def main():
     miru.load(bot)
