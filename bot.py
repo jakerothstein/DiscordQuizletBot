@@ -22,9 +22,12 @@ options.add_argument('log-level=3')
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
                           # https://pypi.org/project/webdriver-manager/
                           options=options)  # Quizlet uses CloudFlare effectively blocking API requests so to get around this you can use selenium
+with open('key.txt', 'r') as file:
+    token = file.read()
+
 driver.minimize_window()
 bot = lightbulb.BotApp(
-    token='',  # DISCORD BOT TOKEN
+    token=str(token),  # DISCORD BOT TOKEN
     banner=None  # No intro console banner
 )
 
