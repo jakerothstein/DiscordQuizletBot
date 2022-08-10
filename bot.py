@@ -110,7 +110,7 @@ def get_start_players_str(players_lst, user_id):  # Creates the string that will
             resp += "<@" + players_lst[i] + "> "
     return resp
 
-
+# TODO: edit bot.d
 def get_quizlet_set_name(set_id):
     url = "https://quizlet.com/" + str(set_id)
     driver.get(url)
@@ -122,21 +122,25 @@ def get_quizlet_set_name(set_id):
 
 
 class join_game(miru.View):  # Class for joining game
-    players = []
+    def __init__(self, init_user):
+        super().__init__(timeout=60)
+        self.players = []
+        self.init_user = init_user
+        self.int_user_used = False
 
     @miru.button(label="Join", style=hikari.ButtonStyle.SUCCESS)
     async def start_button(self, button: miru.Button, ctx: miru.Context) -> None:
 
-        if not quizletGame.int_user_used:
-            quizletGame.int_user_used = True
-            join_game.players.append(quizletGame.init_user)
+        if not self.int_user_used:
+            self.int_user_used = True
+            self.players.append(self.init_user)
 
-        if str(ctx.user.id) not in join_game.players:  # Checks if that user the submitted the request is not already in the party
-            join_game.players.append(
+        if str(ctx.user.id) not in self.players:  # Checks if that user the submitted the request is not already in the party
+            self.players.append(
                 str(ctx.user.id))  # If True it adds them to the party if not it will tell them that they are already in the party
-            resp = get_start_players_str(join_game.players, ctx.user.id)
+            resp = get_start_players_str(self.players, ctx.user.id)
             await ctx.edit_response(resp)
-            bot.d = join_game.players  # Effectively a global var that can be accessed in the function calls
+            bot.d = self.players  # Effectively a global var that can be accessed in the function calls
         else:
             await ctx.respond("You have already joined the party!",
                               flags=hikari.MessageFlag.EPHEMERAL)
@@ -145,14 +149,14 @@ class join_game(miru.View):  # Class for joining game
 
     @miru.button(label="Start", style=hikari.ButtonStyle.PRIMARY)
     async def stop_button(self, button: miru.Button, ctx: miru.Context):
-        if not quizletGame.int_user_used:
-            quizletGame.int_user_used = True
-            join_game.players.append(quizletGame.init_user)
+        if not self.int_user_used:
+            self.int_user_used = True
+            self.players.append(self.init_user)
 
         if str(ctx.user.id) == str(
-                quizletGame.init_user):  # Checks if the user that pressed the button is the person that created the party
-            bot.d = join_game.players  # Logs the players in the game
-            join_game.players = []  # Clears data in local class var
+                self.init_user):  # Checks if the user that pressed the button is the person that created the party
+            bot.d = self.players  # Logs the players in the game
+            self.players = []  # Clears data in local class var
             self.stop()  # Stop listening for interactions
         else:
             await ctx.respond("You must be the leader of the party in order to start the game!",
@@ -160,16 +164,16 @@ class join_game(miru.View):  # Class for joining game
 
     @miru.button(label="Leave", style=hikari.ButtonStyle.DANGER)
     async def leave_button(self, button: miru.Button, ctx: miru.Context):
-        if not quizletGame.int_user_used:
-            quizletGame.int_user_used = True
-            join_game.players.append(quizletGame.init_user)
+        if not self.int_user_used:
+            self.int_user_used = True
+            self.players.append(self.init_user)
 
-        if str(ctx.user.id) in join_game.players:  # Checks if user is in the party
-            join_game.players.remove(str(ctx.user.id))  # Removes user from the party
-            resp = get_start_players_str(join_game.players, ctx.user.id)  # Gets string containing party members
+        if str(ctx.user.id) in self.players:  # Checks if user is in the party
+            self.players.remove(str(ctx.user.id))  # Removes user from the party
+            resp = get_start_players_str(self.players, ctx.user.id)  # Gets string containing party members
             await ctx.edit_response(resp)  # Updates party
-            bot.d = join_game.players  # Logs new party
-            if quizletGame.init_user not in join_game.players:  # Checks if leader left the party and if so it will end and reset the game
+            bot.d = self.players  # Logs new party
+            if self.init_user not in self.players:  # Checks if leader left the party and if so it will end and reset the game
                 await ctx.edit_response("> *This game was ended because the leader left the party*", embeds="",
                                         components="")
                 bot.d = "Timeout1"  # Key to reset the program but not delete the last message
@@ -181,10 +185,9 @@ class join_game(miru.View):  # Class for joining game
 
     @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
     async def cancel_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) == str(quizletGame.init_user):  # Only lets the party leader cancel the game
+        if str(ctx.user.id) == str(self.init_user):  # Only lets the party leader cancel the game
             bot.d = "Timeout"  # Key to delete last message and restart the game
-            quizletGame.gameStarted = False
-            quizletGame.int_user_used = False
+            self.int_user_used = False
             self.stop()  # Stops button input
         else:
             await ctx.respond("You must be the leader of the party to cancel the game",
@@ -195,10 +198,16 @@ class join_game(miru.View):  # Class for joining game
 
 
 class answers(miru.View):
+    def __init__(self, playerMap, init_user, gameStarted):
+        super().__init__(timeout=60)
+        self.init_user = init_user
+        self.playerMap = playerMap
+        self.gameStarted = gameStarted
+
     @miru.button(emoji=hikari.Emoji.parse("🇦"),
                  style=hikari.ButtonStyle.PRIMARY)  # A, B, C and D buttons are all the same but output different outputs (A, B, C, D) and also the user ID who clicked the button
     async def a_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) in quizletGame.playerMap:
+        if str(ctx.user.id) in self.playerMap:
             bot.d = ["A", ctx.user.id]
             self.stop()
         else:
@@ -207,7 +216,7 @@ class answers(miru.View):
 
     @miru.button(emoji=hikari.Emoji.parse("🇧"), style=hikari.ButtonStyle.PRIMARY)
     async def b_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) in quizletGame.playerMap:
+        if str(ctx.user.id) in self.playerMap:
             bot.d = ["B", ctx.user.id]
             self.stop()
         else:
@@ -216,7 +225,7 @@ class answers(miru.View):
 
     @miru.button(emoji=hikari.Emoji.parse("🇨"), style=hikari.ButtonStyle.PRIMARY)
     async def c_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) in quizletGame.playerMap:
+        if str(ctx.user.id) in self.playerMap:
             bot.d = ["C", ctx.user.id]
             self.stop()
         else:
@@ -225,7 +234,7 @@ class answers(miru.View):
 
     @miru.button(emoji=hikari.Emoji.parse("🇩"), style=hikari.ButtonStyle.PRIMARY)
     async def d_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) in quizletGame.playerMap:
+        if str(ctx.user.id) in self.playerMap:
             bot.d = ["D", ctx.user.id]
             self.stop()
         else:
@@ -235,11 +244,10 @@ class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🛑"),
                  style=hikari.ButtonStyle.DANGER)  # Stop button stops the game and goes directly to the winners page
     async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
-        if str(ctx.user.id) in quizletGame.playerMap:  # Checks if the player is in the game
-            if str(ctx.user.id) == str(quizletGame.init_user):  # Only party leader (creator) can end the game
+        if str(ctx.user.id) in self.playerMap:  # Checks if the player is in the game
+            if str(ctx.user.id) == str(self.init_user):  # Only party leader (creator) can end the game
                 bot.d = ["Stop", ctx.user.id]
-                quizletGame.gameStarted = False
-                quizletGame.int_user_used = False
+                self.gameStarted = False
                 self.stop()
             else:
                 await ctx.respond("You must be the party leader (creator) to end the game!",
@@ -252,64 +260,54 @@ class answers(miru.View):
         bot.d = "Timeout"
 
 
-class quizletGame(threading.Thread):
-    playerMap = {}  # The following vars are all global vars controlled by quizlet_game() to communicate the miru commands
+class quizletGame:
 
-    gameStarted = False
-
-    init_user = ""
-
-    int_user_used = False
-
-    rand_url = ""
-
-    def __init__(self, ctx, output_type):
-        super().__init__()
+    def __init__(self, ctx, input_type):
+        self.playerMap = {}  # The following vars are all global vars controlled by quizlet_game() to communicate the miru commands
+        self.gameStarted = False
+        self.init_user = ""
+        self.rand_url = ""
         self.ctx = ctx
-        self.type = output_type
-        if str(output_type) == 'u':
-            asyncio.run(self.quizlet_game())
-        else:
-            asyncio.run(self.rand_quizlet_game())
+        self.input_type = input_type
 
-    async def rand_quizlet_game(self):
-        url = "https://quizlet.com/search?query=" + str(self.ctx.options.search).replace(" ", "+") + "&type=sets"
-        driver.get(url)
-        data = BeautifulSoup(driver.page_source, "html.parser")
-        try:
-            div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
-            target_url = div_data.find('a')['href']
-        except:
-            await self.ctx.respond("> Set not found\nPlease search again for another set",
-                                   flags=hikari.MessageFlag.EPHEMERAL)
-            return
-        quizletGame.rand_url = str(target_url)
-        return await quizletGame.quizlet_game(self.ctx)
+    async def start(self):
+        if str(self.input_type) == 'search':
+            url = "https://quizlet.com/search?query=" + str(self.ctx.options.search).replace(" ", "+") + "&type=sets"
+            driver.get(url)
+            data = BeautifulSoup(driver.page_source, "html.parser")
+            try:
+                div_data = data.find('div', attrs={'class': 'SetPreviewCard-header'})
+                target_url = div_data.find('a')['href']
+            except:
+                await self.ctx.respond("> Set not found\nPlease search again for another set",
+                                       flags=hikari.MessageFlag.EPHEMERAL)
+                return
+            self.rand_url = str(target_url)
+        return await self.quizlet_game()
 
     async def quizlet_game(self):
-        if quizletGame.gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
+        if self.gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
             await self.ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
             time.sleep(1)
-            quizletGame.rand_url = ""
+            self.rand_url = ""
             return
-        quizletGame.int_user_used = False
-        quizletGame.init_user = str(self.ctx.author.id)
+        self.init_user = str(self.ctx.author.id)
         await (await self.ctx.respond("Starting Game...")).message()
-        quizletGame.gameStarted = True  # Locks game so other instances can not be run
-        view = join_game(timeout=60)  # after 60 seconds the menu will disappear
-        if quizletGame.rand_url == "":
+        self.gameStarted = True  # Locks game so other instances can not be run
+        view = join_game(self.init_user)  # after 60 seconds the menu will disappear
+        if self.rand_url == "":
             url = str(self.ctx.options.url)  # Gets url from the slash command
         else:
-            url = quizletGame.rand_url
+            url = self.rand_url
         # set_id = re.sub("[^0-9]", "", url)
         try:
             parsed = urllib.parse.urlsplit(url)  # Parses the url to get the set_id num
             set_id = parsed.path.split("/")[1]
         except:
-            quizletGame.gameStarted = False
+            self.gameStarted = False
             await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
-            quizletGame.rand_url = ""
+            self.rand_url = ""
             return
         if not set_id.isdigit():
             set_id = parsed.path.split("/")[2]
@@ -318,7 +316,7 @@ class quizletGame(threading.Thread):
             set_id)  # Uses the set ID to call functions to return a dict of all the terms and answers
 
         if orig_quizlet_set == "Error":  # Error handling
-            quizletGame.gameStarted = False
+            self.gameStarted = False
             await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
             rand_url = ""
@@ -328,8 +326,8 @@ class quizletGame(threading.Thread):
         if len(orig_quizlet_set) < 4:
             await self.ctx.edit_last_response(
                 "> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
-            quizletGame.gameStarted = False
-            quizletGame.rand_url = ""
+            self.gameStarted = False
+            self.rand_url = ""
             return
         set_name = get_quizlet_set_name(set_id)
         embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\nSet Name: " + str(
@@ -346,24 +344,24 @@ class quizletGame(threading.Thread):
         await view.wait()  # Wait until the view times out or a self.stop() is triggered in the buttons
         if str(bot.d) == "Timeout":  # Timeout handling from buttons
             await self.ctx.delete_last_response()
-            quizletGame.gameStarted = False  # Resets the game vars
-            quizletGame.rand_url = ""
+            self.gameStarted = False  # Resets the game vars
+            self.rand_url = ""
             return
         elif str(bot.d) == "Timeout1":  # Timeout1 handling from buttons
-            quizletGame.gameStarted = False
-            quizletGame.rand_url = ""
+            self.gameStarted = False
+            self.rand_url = ""
             return
         playerList = bot.d  # If not errors gets player data from bot.d
         del bot.d  # Deletes bot data to reset list
         for player in range(len(playerList)):
             playerList.insert(playerList.index(playerList[player]) * 2 + 1,
                               0)  # Formats playerList[] to create a playerMap{} to hold scores
-        quizletGame.playerMap = convert(playerList)  # Converts to dict
+        self.playerMap = convert(playerList)  # Converts to dict
         del playerList  # Resets var
         round_cnt = 0  # Round counter var
         stop = True  # While loop condition
         while stop:
-            view = answers(timeout=20)  # Answers only last for 20 sec
+            view = answers(self.playerMap, self.init_user, self.gameStarted)  # Answers only last for 20 sec
             data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)  # Gets formatted quiz data
             round_cnt += 1
             description = "Match the terms (20 seconds to answer)\n\nTerm: **" + data[
@@ -395,13 +393,13 @@ class quizletGame(threading.Thread):
                 continue
             letter = correct_letter(data)  # Finds the correct answer
             if str(bot.d[0]) == letter:  # If correct
-                quizletGame.playerMap[str(bot.d[1])] += 10  # Add 10 points
+                self.playerMap[str(bot.d[1])] += 10  # Add 10 points
                 resp = "correct :white_check_mark:\n> Good job " + "<@" + str(bot.d[1]) + ">\n> You have " + str(
-                    quizletGame.playerMap[str(bot.d[1])]) + " points!"
+                    self.playerMap[str(bot.d[1])]) + " points!"
             else:
-                quizletGame.playerMap[str(bot.d[1])] -= 10  # Subtract 10 points
+                self.playerMap[str(bot.d[1])] -= 10  # Subtract 10 points
                 resp = "incorrect :x:\n> <@" + str(bot.d[1]) + "> answered: " + str(bot.d[0]) + "\n> You have " + str(
-                    quizletGame.playerMap[str(bot.d[1])]) + " points."
+                    self.playerMap[str(bot.d[1])]) + " points."
             finalResp = "The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
                 bot.d[1]) + "> is " + resp
             if len(remain_quizlet_set) < 2:
@@ -413,18 +411,18 @@ class quizletGame(threading.Thread):
                 await self.ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
             del remain_quizlet_set[data[2]]  # Removes used question from remain_quizlet_set
             await self.ctx.delete_last_response()
-        myList = sorted(quizletGame.playerMap.items(), key=lambda x: x[1],
+        myList = sorted(self.playerMap.items(), key=lambda x: x[1],
                         reverse=True)  # If game is over sort the players
         rank = ""
         for i in range(len(myList)):
             rank += str(i + 1) + ". <@" + str(myList[i][0]) + "> " + str(
-                quizletGame.playerMap[str(myList[i][0])]) + " Points\n"  # Adds the players to the scoreboard
+                self.playerMap[str(myList[i][0])]) + " Points\n"  # Adds the players to the scoreboard
 
         embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)  # Embed
         embed.set_footer(text="Thanks for playing!")
         await self.ctx.edit_last_response("", embed=embed, components="")
-        quizletGame.gameStarted = False  # Stops game
-        quizletGame.rand_url = ""
+        self.gameStarted = False  # Stops game
+        self.rand_url = ""
         return 1
 
 
@@ -432,10 +430,9 @@ class quizletGame(threading.Thread):
 @lightbulb.option('url', 'Quizlet set url', type=str)  # Requires a string input with the slash command
 @lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
 @lightbulb.implements(lightbulb.SlashCommand)
-def start_quizlet_game(ctx: lightbulb.SlashContext):
-    thread1 = quizletGame(ctx, 'u')
-    thread1.start()
-    thread1.join()
+async def start_quizlet_game(ctx: lightbulb.SlashContext):
+    game = quizletGame(ctx, 'url')
+    await game.start()
 
 
 @bot.command
@@ -443,10 +440,9 @@ def start_quizlet_game(ctx: lightbulb.SlashContext):
                   type=str)  # Requires a string input with the slash command
 @lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
-def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
-    t = quizletGame(ctx, 's')
-    t.start()
-    t.join()
+async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
+    game = quizletGame(ctx, 'search')
+    await game.start()
 
     # random_game_thread = threading.Thread("rand_quizlet_game", ctx)
     # random_game_thread.start()
