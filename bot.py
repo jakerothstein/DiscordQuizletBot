@@ -199,11 +199,10 @@ class join_game(miru.View):  # Class for joining game
 
 
 class answers(miru.View):
-    def __init__(self, playerMap, init_user, gameStarted):
+    def __init__(self, playerMap, init_user):
         super().__init__(timeout=60)
         self.init_user = init_user
         self.playerMap = playerMap
-        self.gameStarted = gameStarted
         self.answer = ""
 
     @miru.button(emoji=hikari.Emoji.parse("🇦"),
@@ -249,7 +248,6 @@ class answers(miru.View):
         if str(ctx.user.id) in self.playerMap:  # Checks if the player is in the game
             if str(ctx.user.id) == str(self.init_user):  # Only party leader (creator) can end the game
                 self.answer = ["Stop", ctx.user.id]
-                self.gameStarted = False
                 self.stop()
             else:
                 await ctx.respond("You must be the party leader (creator) to end the game!",
@@ -266,13 +264,13 @@ class quizletGame:
 
     def __init__(self, ctx, input_type):
         self.playerMap = {}  # The following vars are all global vars controlled by quizlet_game() to communicate the miru commands
-        self.gameStarted = False
         self.init_user = ""
         self.rand_url = ""
         self.ctx = ctx
         self.input_type = input_type
 
     async def start(self):
+        global channel_list
         if str(self.input_type) == 'search':
             url = "https://quizlet.com/search?query=" + str(self.ctx.options.search).replace(" ", "+") + "&type=sets"
             driver.get(url)
@@ -283,19 +281,14 @@ class quizletGame:
             except:
                 await self.ctx.respond("> Set not found\nPlease search again for another set",
                                        flags=hikari.MessageFlag.EPHEMERAL)
+                channel_list.remove(self.ctx.channel_id)
                 return
             self.rand_url = str(target_url)
         return await self.quizlet_game()
 
     async def quizlet_game(self):
-        if self.gameStarted:  # Checks if there is already a game in progress and if so it will terminate the func
-            await self.ctx.respond("There is already a game in progress!", flags=hikari.MessageFlag.EPHEMERAL)
-            time.sleep(1)
-            self.rand_url = ""
-            return
         self.init_user = str(self.ctx.author.id)
         await (await self.ctx.respond("Starting Game...")).message()
-        self.gameStarted = True  # Locks game so other instances can not be run
         view = join_game(self.init_user)  # after 60 seconds the menu will disappear
         if self.rand_url == "":
             url = str(self.ctx.options.url)  # Gets url from the slash command
@@ -306,10 +299,10 @@ class quizletGame:
             parsed = urllib.parse.urlsplit(url)  # Parses the url to get the set_id num
             set_id = parsed.path.split("/")[1]
         except:
-            self.gameStarted = False
             await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
             self.rand_url = ""
+            channel_list.remove(self.ctx.channel_id)
             return
         if not set_id.isdigit():
             set_id = parsed.path.split("/")[2]
@@ -318,18 +311,18 @@ class quizletGame:
             set_id)  # Uses the set ID to call functions to return a dict of all the terms and answers
 
         if orig_quizlet_set == "Error":  # Error handling
-            self.gameStarted = False
             await self.ctx.edit_last_response(
                 "> **Invalid set url**\nPlease check your url\nExample formatting: https://quizlet.com/set_id/quizlet-set-name/")
             rand_url = ""
+            channel_list.remove(self.ctx.channel_id)
             return
         remain_quizlet_set = {}
         remain_quizlet_set.update(orig_quizlet_set)
         if len(orig_quizlet_set) < 4:
             await self.ctx.edit_last_response(
                 "> *The quizlet set has an insufficient amount of cards.*\n*Please use another set*")
-            self.gameStarted = False
             self.rand_url = ""
+            channel_list.remove(self.ctx.channel_id)
             return
         set_name = get_quizlet_set_name(set_id)
         embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\nSet Name: " + str(
@@ -346,12 +339,12 @@ class quizletGame:
         await view.wait()  # Wait until the view times out or a self.stop() is triggered in the buttons
         if str(view.answer) == "Timeout":  # Timeout handling from buttons
             await self.ctx.delete_last_response()
-            self.gameStarted = False  # Resets the game vars
             self.rand_url = ""
+            channel_list.remove(self.ctx.channel_id)
             return
         elif str(view.answer) == "Timeout1":  # Timeout1 handling from buttons
-            self.gameStarted = False
             self.rand_url = ""
+            channel_list.remove(self.ctx.channel_id)
             return
         playerList = view.answer  # If not errors gets player data from view.answer
         del view.answer  # Deletes bot data to reset list
@@ -363,7 +356,7 @@ class quizletGame:
         round_cnt = 0  # Round counter var
         stop = True  # While loop condition
         while stop:
-            view = answers(self.playerMap, self.init_user, self.gameStarted)  # Answers only last for 20 sec
+            view = answers(self.playerMap, self.init_user)  # Answers only last for 20 sec
             data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)  # Gets formatted quiz data
             round_cnt += 1
             description = "Match the terms (20 seconds to answer)\n\nTerm: **" + data[
@@ -400,7 +393,8 @@ class quizletGame:
                     self.playerMap[str(view.answer[1])]) + " points!"
             else:
                 self.playerMap[str(view.answer[1])] -= 10  # Subtract 10 points
-                resp = "incorrect :x:\n> <@" + str(view.answer[1]) + "> answered: " + str(view.answer[0]) + "\n> You have " + str(
+                resp = "incorrect :x:\n> <@" + str(view.answer[1]) + "> answered: " + str(
+                    view.answer[0]) + "\n> You have " + str(
                     self.playerMap[str(view.answer[1])]) + " points."
             finalResp = "The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
                 view.answer[1]) + "> is " + resp
@@ -423,9 +417,12 @@ class quizletGame:
         embed = hikari.Embed(title="🏆 Rankings 🏆", description=rank, color=0x4257b2)  # Embed
         embed.set_footer(text="Thanks for playing!")
         await self.ctx.edit_last_response("", embed=embed, components="")
-        self.gameStarted = False  # Stops game
         self.rand_url = ""
+        channel_list.remove(self.ctx.channel_id)
         return 1
+
+
+channel_list = []
 
 
 @bot.command
@@ -433,8 +430,15 @@ class quizletGame:
 @lightbulb.command('start-game', 'Starts quizlet game')  # Command titles
 @lightbulb.implements(lightbulb.SlashCommand)
 async def start_quizlet_game(ctx: lightbulb.SlashContext):
-    game = quizletGame(ctx, 'url')
-    await game.start()
+    channel_id = ctx.channel_id
+    global channel_list
+    if channel_id not in channel_list:
+        channel_list.append(channel_id)
+        game = quizletGame(ctx, 'url')
+        await game.start()
+    else:
+        await ctx.respond("> There is already a game running in this channel.\nTry starting a new game in another channel!",
+                          flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @bot.command
@@ -443,8 +447,15 @@ async def start_quizlet_game(ctx: lightbulb.SlashContext):
 @lightbulb.command('search-game', 'Starts a random game with a user provided query')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
-    game = quizletGame(ctx, 'search')
-    await game.start()
+    channel_id = ctx.channel_id
+    global channel_list
+    if channel_id not in channel_list:
+        channel_list.append(channel_id)
+        game = quizletGame(ctx, 'search')
+        await game.start()
+    else:
+        await ctx.respond("> There is already a game running in this channel.\nTry starting a new game in another channel!",
+                          flags=hikari.MessageFlag.EPHEMERAL)
 
     # random_game_thread = threading.Thread("rand_quizlet_game", ctx)
     # random_game_thread.start()
