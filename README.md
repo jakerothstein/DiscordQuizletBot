@@ -9,6 +9,9 @@
 2. Get a discord bot token [Link](https://discord.com/developers/applications)
 
 
+3. Copy and paste discord bot token into the key.txt file ✂
+
+
 # Commands
 
 >/start-game [url]
