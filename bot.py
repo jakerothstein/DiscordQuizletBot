@@ -110,7 +110,7 @@ def get_start_players_str(players_lst, user_id):  # Creates the string that will
             resp += "<@" + players_lst[i] + "> "
     return resp
 
-# TODO: edit bot.d
+
 def get_quizlet_set_name(set_id):
     url = "https://quizlet.com/" + str(set_id)
     driver.get(url)
@@ -127,6 +127,7 @@ class join_game(miru.View):  # Class for joining game
         self.players = []
         self.init_user = init_user
         self.int_user_used = False
+        self.answer = ""
 
     @miru.button(label="Join", style=hikari.ButtonStyle.SUCCESS)
     async def start_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -140,7 +141,7 @@ class join_game(miru.View):  # Class for joining game
                 str(ctx.user.id))  # If True it adds them to the party if not it will tell them that they are already in the party
             resp = get_start_players_str(self.players, ctx.user.id)
             await ctx.edit_response(resp)
-            bot.d = self.players  # Effectively a global var that can be accessed in the function calls
+            self.answer = self.players  # Effectively a global var that can be accessed in the function calls
         else:
             await ctx.respond("You have already joined the party!",
                               flags=hikari.MessageFlag.EPHEMERAL)
@@ -155,7 +156,7 @@ class join_game(miru.View):  # Class for joining game
 
         if str(ctx.user.id) == str(
                 self.init_user):  # Checks if the user that pressed the button is the person that created the party
-            bot.d = self.players  # Logs the players in the game
+            self.answer = self.players  # Logs the players in the game
             self.players = []  # Clears data in local class var
             self.stop()  # Stop listening for interactions
         else:
@@ -172,11 +173,11 @@ class join_game(miru.View):  # Class for joining game
             self.players.remove(str(ctx.user.id))  # Removes user from the party
             resp = get_start_players_str(self.players, ctx.user.id)  # Gets string containing party members
             await ctx.edit_response(resp)  # Updates party
-            bot.d = self.players  # Logs new party
+            self.answer = self.players  # Logs new party
             if self.init_user not in self.players:  # Checks if leader left the party and if so it will end and reset the game
                 await ctx.edit_response("> *This game was ended because the leader left the party*", embeds="",
                                         components="")
-                bot.d = "Timeout1"  # Key to reset the program but not delete the last message
+                self.answer = "Timeout1"  # Key to reset the program but not delete the last message
                 self.stop()  # Stops button input
 
         else:  # If they are not in the party
@@ -186,7 +187,7 @@ class join_game(miru.View):  # Class for joining game
     @miru.button(label="Cancel", style=hikari.ButtonStyle.SECONDARY)
     async def cancel_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) == str(self.init_user):  # Only lets the party leader cancel the game
-            bot.d = "Timeout"  # Key to delete last message and restart the game
+            self.answer = "Timeout"  # Key to delete last message and restart the game
             self.int_user_used = False
             self.stop()  # Stops button input
         else:
@@ -194,7 +195,7 @@ class join_game(miru.View):  # Class for joining game
                               flags=hikari.MessageFlag.EPHEMERAL)
 
     async def on_timeout(self) -> None:
-        bot.d = "Timeout"  # If the user take too long (60 seconds) it will automatically delete the last message and restart the game
+        self.answer = "Timeout"  # If the user take too long (60 seconds) it will automatically delete the last message and restart the game
 
 
 class answers(miru.View):
@@ -203,12 +204,13 @@ class answers(miru.View):
         self.init_user = init_user
         self.playerMap = playerMap
         self.gameStarted = gameStarted
+        self.answer = ""
 
     @miru.button(emoji=hikari.Emoji.parse("🇦"),
                  style=hikari.ButtonStyle.PRIMARY)  # A, B, C and D buttons are all the same but output different outputs (A, B, C, D) and also the user ID who clicked the button
     async def a_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in self.playerMap:
-            bot.d = ["A", ctx.user.id]
+            self.answer = ["A", ctx.user.id]
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -217,7 +219,7 @@ class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🇧"), style=hikari.ButtonStyle.PRIMARY)
     async def b_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in self.playerMap:
-            bot.d = ["B", ctx.user.id]
+            self.answer = ["B", ctx.user.id]
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -226,7 +228,7 @@ class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🇨"), style=hikari.ButtonStyle.PRIMARY)
     async def c_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in self.playerMap:
-            bot.d = ["C", ctx.user.id]
+            self.answer = ["C", ctx.user.id]
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -235,7 +237,7 @@ class answers(miru.View):
     @miru.button(emoji=hikari.Emoji.parse("🇩"), style=hikari.ButtonStyle.PRIMARY)
     async def d_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in self.playerMap:
-            bot.d = ["D", ctx.user.id]
+            self.answer = ["D", ctx.user.id]
             self.stop()
         else:
             await ctx.respond("You are not part of this game. Join a game next round!",
@@ -246,7 +248,7 @@ class answers(miru.View):
     async def stop_button(self, button: miru.Button, ctx: miru.Context) -> None:
         if str(ctx.user.id) in self.playerMap:  # Checks if the player is in the game
             if str(ctx.user.id) == str(self.init_user):  # Only party leader (creator) can end the game
-                bot.d = ["Stop", ctx.user.id]
+                self.answer = ["Stop", ctx.user.id]
                 self.gameStarted = False
                 self.stop()
             else:
@@ -257,7 +259,7 @@ class answers(miru.View):
                               flags=hikari.MessageFlag.EPHEMERAL)
 
     async def on_timeout(self) -> None:  # If the question times out (20 seconds) it will call a function to tick down
-        bot.d = "Timeout"
+        self.answer = "Timeout"
 
 
 class quizletGame:
@@ -342,17 +344,17 @@ class quizletGame:
                                                     components=view.build())  # Builds and sends message
         view.start(message)  # Listens for a response from the buttons
         await view.wait()  # Wait until the view times out or a self.stop() is triggered in the buttons
-        if str(bot.d) == "Timeout":  # Timeout handling from buttons
+        if str(view.answer) == "Timeout":  # Timeout handling from buttons
             await self.ctx.delete_last_response()
             self.gameStarted = False  # Resets the game vars
             self.rand_url = ""
             return
-        elif str(bot.d) == "Timeout1":  # Timeout1 handling from buttons
+        elif str(view.answer) == "Timeout1":  # Timeout1 handling from buttons
             self.gameStarted = False
             self.rand_url = ""
             return
-        playerList = bot.d  # If not errors gets player data from bot.d
-        del bot.d  # Deletes bot data to reset list
+        playerList = view.answer  # If not errors gets player data from view.answer
+        del view.answer  # Deletes bot data to reset list
         for player in range(len(playerList)):
             playerList.insert(playerList.index(playerList[player]) * 2 + 1,
                               0)  # Formats playerList[] to create a playerMap{} to hold scores
@@ -379,7 +381,7 @@ class quizletGame:
                                                    components=view.build())).message()  # Sends new message to go to bottom of the channel
             view.start(prompt)  # Starts listening
             await view.wait()  # Wait until the view times out or gets stopped
-            if str(bot.d) == "Timeout":  # Timeout handling if no one responds in 20 sec
+            if str(view.answer) == "Timeout":  # Timeout handling if no one responds in 20 sec
                 if len(remain_quizlet_set) < 2:
                     stop = False
                     continue
@@ -388,20 +390,20 @@ class quizletGame:
                     time.sleep(1)
                     await self.ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
                 continue  # Goes to next question
-            if str(bot.d[0]) == "Stop":  # Checks if game is over and if so ends the loop
+            if str(view.answer[0]) == "Stop":  # Checks if game is over and if so ends the loop
                 stop = False
                 continue
             letter = correct_letter(data)  # Finds the correct answer
-            if str(bot.d[0]) == letter:  # If correct
-                self.playerMap[str(bot.d[1])] += 10  # Add 10 points
-                resp = "correct :white_check_mark:\n> Good job " + "<@" + str(bot.d[1]) + ">\n> You have " + str(
-                    self.playerMap[str(bot.d[1])]) + " points!"
+            if str(view.answer[0]) == letter:  # If correct
+                self.playerMap[str(view.answer[1])] += 10  # Add 10 points
+                resp = "correct :white_check_mark:\n> Good job " + "<@" + str(view.answer[1]) + ">\n> You have " + str(
+                    self.playerMap[str(view.answer[1])]) + " points!"
             else:
-                self.playerMap[str(bot.d[1])] -= 10  # Subtract 10 points
-                resp = "incorrect :x:\n> <@" + str(bot.d[1]) + "> answered: " + str(bot.d[0]) + "\n> You have " + str(
-                    self.playerMap[str(bot.d[1])]) + " points."
+                self.playerMap[str(view.answer[1])] -= 10  # Subtract 10 points
+                resp = "incorrect :x:\n> <@" + str(view.answer[1]) + "> answered: " + str(view.answer[0]) + "\n> You have " + str(
+                    self.playerMap[str(view.answer[1])]) + " points."
             finalResp = "The last answer was **" + data[2] + "** or answer **" + letter + "**\n> " + "<@" + str(
-                bot.d[1]) + "> is " + resp
+                view.answer[1]) + "> is " + resp
             if len(remain_quizlet_set) < 2:
                 stop = False
                 continue
