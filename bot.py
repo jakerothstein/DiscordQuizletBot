@@ -362,8 +362,12 @@ class quizletGame:
             view = answers(self.playerMap, self.init_user)  # Answers only last for 20 sec
             data = get_quiz_data(orig_quizlet_set, remain_quizlet_set)  # Gets formatted quiz data
             round_cnt += 1
-            description = "Match the terms (20 seconds to answer)\n\nTerm: **" + data[
-                1][0] + "**\n\nAnswers:\n:regional_indicator_a:: " + data[0][
+            term = data[1][0]
+            term = str(term)
+            if term != "":
+                term = "\nTerm: ** " + term + " **\n"
+
+            description = "Match the terms (20 seconds to answer)\n" + term + "\nAnswers:\n:regional_indicator_a:: " + data[0][
                               0] + "\n:regional_indicator_b:: " + data[0][
                               1] + "\n:regional_indicator_c:: " + data[0][2] + "\n:regional_indicator_d:: " + data[0][3]
 
