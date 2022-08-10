@@ -22,6 +22,3 @@ Starts the game
 >
 Starts a random game with a user provided key
 
->/reset-bot
->
-Resets the bot if errors occur (Admin access is required to run command)

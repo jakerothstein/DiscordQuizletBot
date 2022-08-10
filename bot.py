@@ -466,19 +466,19 @@ async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
     # await quizletGame.rand_quizlet_game(ctx)
 
 
-@bot.command
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8)))  # Checks for admin and resets vars
-@lightbulb.command('reset-bot', '[MUST HAVE ADMIN ACCESS] Resets quizlet bot if errors occur')
-@lightbulb.implements(lightbulb.SlashCommand)
-async def reset(ctx):
-    await ctx.respond("Restarting...")
-    try:
-        driver.quit()
-    except:
-        print("Webdriver does not exist")
-    await ctx.edit_last_response("Reset Complete ✅")
-    os.execv(sys.executable, ['python'] + sys.argv)
-
+# @bot.command
+# @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8)))  # Checks for admin and resets vars
+# @lightbulb.command('reset-bot', '[MUST HAVE ADMIN ACCESS] Resets quizlet bot if errors occur')
+# @lightbulb.implements(lightbulb.SlashCommand)
+# async def reset(ctx):
+#     await ctx.respond("Restarting...")
+#     try:
+#         driver.quit()
+#     except:
+#         print("Webdriver does not exist")
+#     await ctx.edit_last_response("Reset Complete ✅")
+#     os.execv(sys.executable, ['python'] + sys.argv)
+#TODO: Create an /info command
 
 def main():
     miru.load(bot)
