@@ -263,9 +263,10 @@ class answers(miru.View):
         self.answer = "Timeout"
 
 
-class quizletGame:
+class quizletGame(threading.Thread):
 
     def __init__(self, ctx, input_type):
+        threading.Thread.__init__(self)
         self.playerMap = {}  # The following vars are all global vars controlled by quizlet_game() to communicate the miru commands
         self.init_user = ""
         self.rand_url = ""
@@ -387,7 +388,7 @@ class quizletGame:
                     continue
                 del remain_quizlet_set[data[2]]
                 for i in range(3, 0, -1):
-                    time.sleep(1)
+                    await asyncio.sleep(1)
                     await self.ctx.edit_last_response("*Next question in " + str(i) + " seconds!*")
                 continue  # Goes to next question
             if str(view.answer[0]) == "Stop":  # Checks if game is over and if so ends the loop
@@ -410,7 +411,7 @@ class quizletGame:
                 continue
             await self.ctx.respond(finalResp + "\n*Next question in 6 seconds!*")  # Countdown till next question
             for i in range(5, 0, -1):
-                time.sleep(1)
+                await asyncio.sleep(1)
                 await self.ctx.edit_last_response(finalResp + "\n*Next question in " + str(i) + " seconds!*")
             del remain_quizlet_set[data[2]]  # Removes used question from remain_quizlet_set
             await self.ctx.delete_last_response()
