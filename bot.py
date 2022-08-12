@@ -472,8 +472,14 @@ async def search_quizlet_game(ctx: lightbulb.SlashContext):
 @lightbulb.command('info', 'How to use bot')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
-    await ctx.respond("This is how you use the bot")  # TODO: Update this with an embed
-
+    description = "".join(("*Purpose:*",
+                          "\n\nThis bot allows you to play multiplayer **Quizlet** games inside of Discord!", 
+                          "\n\n*How to play a game:*", 
+                          "\n\n**1.** To start a game, either input a set of keywords to find a set to use with the **/search-game** command or directly paste a URL to a Quizlet set with the **/start-game** command.", 
+                          "\n\n**2.** Once all the players have **joined**, hit **start**. For each round, the first person to click an **answer button** (:regional_indicator_a:, :regional_indicator_b:, :regional_indicator_c:, or :regional_indicator_d:) gets 10 points if they got the answer correct or loses 10 points if they got it wrong.", 
+                          "\n\n**3.** Click **stop 🛑** to end the game early. Alternatively, the game will automatically end once every term has been used. *After the the game, a leaderboard will display each participant's scores.*"))
+    embed = hikari.Embed(title="ℹ️ Bot Info ℹ️", description=description, color=0x4257b2)
+    await ctx.respond(embed)
 
 # @bot.command
 # @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions(8)))  # Checks for admin and resets vars
