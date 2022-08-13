@@ -23,5 +23,9 @@ Starts the game
 >
 Starts a random game with a user provided key
 
+>/info
+>
+Shows user how to use the bot
+
 ![SearchGameGif](https://user-images.githubusercontent.com/73565590/183804431-9246ed8a-e352-4b1b-b9cf-502f3587b849.gif)
 
