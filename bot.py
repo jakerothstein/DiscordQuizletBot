@@ -1,10 +1,7 @@
 import asyncio
 import json
-import os
 import random
-import sys
 import threading
-import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -470,21 +467,22 @@ async def search_quizlet_game(ctx: lightbulb.SlashContext):
 
 
 @bot.command
-@lightbulb.command('info', 'How to use bot')
+@lightbulb.command('help', 'How to use bot')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def start_rand_quizlet_game(ctx: lightbulb.SlashContext):
-    description = "".join(("\n\n**1.** To start a game, either input a set of keywords to find a set to use with the **/search-game** command or directly paste a URL to a Quizlet set with the **/start-game** command.",
-                           "\n\n**2.** Once all the players have **joined**, hit **start**. For each round, the first person to click an **answer button** (:regional_indicator_a:, :regional_indicator_b:, :regional_indicator_c:, or :regional_indicator_d:) gets 10 points if they got the answer correct or loses 10 points if they got it wrong.",
-                           "\n\n**3.** Click **stop 🛑** to end the game early. Alternatively, the game will automatically end once every term has been used. *After the the game, a leaderboard will display each participant's scores.*"))
+    description = "".join((
+                          "\n\n**1.** To start a game, either input a set of keywords to find a set to use with the **/search-game** command or directly paste a URL to a Quizlet set with the **/start-game** command.",
+                          "\n\n**2.** Once all the players have **joined**, hit **start**. For each round, the first person to click an **answer button** (:regional_indicator_a:, :regional_indicator_b:, :regional_indicator_c:, or :regional_indicator_d:) gets 10 points if they got the answer correct or loses 10 points if they got it wrong.",
+                          "\n\n**3.** Click **stop 🛑** to end the game early. Alternatively, the game will automatically end once every term has been used. *After the the game, a leaderboard will display each participant's scores.*"))
     embed = hikari.Embed(title="Quizlet Bot Info 📢", color=0x4257b2)
-    embed.add_field(name="*Purpose:*", value="This bot allows you to play multiplayer **Quizlet** games inside of Discord!")
+    embed.add_field(name="*Purpose:*",
+                    value="This bot allows you to play multiplayer **Quizlet** games inside of Discord!")
     embed.add_field(name="*How to play a game:*", value=description)
 
     link_view = miru.View()
     link_view.add_item(miru.Button(label="GitHub", url="https://github.com/jakerothstein/DiscordQuizletBot"))
     await ctx.respond(embed=embed, components=link_view.build())
     await link_view.wait()
-
 
 
 def main():
