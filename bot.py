@@ -117,8 +117,9 @@ def get_quizlet_set_name(set_id):
     data = BeautifulSoup(driver.page_source, "html.parser")
 
     name = data.find('title').encode_contents()
+    author = data.find('span', attrs={'class': 'UserLink-username'}).text
 
-    return str(name[0:len(name) - 21].decode("utf-8"))
+    return [str(name[0:len(name) - 21].decode("utf-8")), author]
 
 
 class join_game(miru.View):  # Class for joining game
@@ -327,7 +328,7 @@ class quizletGame(threading.Thread):
             return
         set_name = get_quizlet_set_name(set_id)
         embed = hikari.Embed(title="Quizlet Bot", description="**Game Started!**\nSet Name: " + str(
-            set_name) + "\n*Press Join to enter the party*",
+            set_name[0]) + "\nAuthor: " + str(set_name[1]) + "\n*Press Join to enter the party*",
                              # Embedding
                              color=0x4257b2, url=str("https://quizlet.com/" + set_id))
         embed.set_thumbnail("https://www.aisd.net/wp-content/files/quizlet.png")  # Random quizlet image from online
